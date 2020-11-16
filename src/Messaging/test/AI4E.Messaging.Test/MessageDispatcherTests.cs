@@ -60,8 +60,14 @@ namespace AI4E.Messaging
 
             var optionsProvider = BuildMessagingOptions();
             var messageRouterFactory = BuildMessageRouterFactory(optionsProvider);
-            var dispatcher = new MessageDispatcher(
-                registry, messageRouterFactory, new MessageSerializer(TypeResolver.Default), TypeResolver.Default, serviceProvider, optionsProvider);
+            var engine = new MessagingEngine(
+                registry,
+                messageRouterFactory,
+                new MessageSerializer(TypeResolver.Default),
+                TypeResolver.Default,
+                serviceProvider,
+                optionsProvider);
+            var dispatcher = engine.CreateDispatcher();
 
             var dispatchData = new DispatchDataDictionary<string>("testmessage");
             var cancellationTokenSource = new CancellationTokenSource();
@@ -94,8 +100,14 @@ namespace AI4E.Messaging
             var serviceProvider = new ServiceProviderMock();
             var optionsProvider = BuildMessagingOptions();
             var messageRouterFactory = BuildMessageRouterFactory(optionsProvider);
-            var dispatcher = new MessageDispatcher(
-                registry, messageRouterFactory, new MessageSerializer(TypeResolver.Default), TypeResolver.Default, serviceProvider, optionsProvider);
+            var engine = new MessagingEngine(
+                registry, 
+                messageRouterFactory, 
+                new MessageSerializer(TypeResolver.Default), 
+                TypeResolver.Default, 
+                serviceProvider, 
+                optionsProvider);
+            var dispatcher = engine.CreateDispatcher();
 
             var dispatchData = new DispatchDataDictionary<string>("testmessage");
             var cancellationTokenSource = new CancellationTokenSource();
@@ -125,8 +137,14 @@ namespace AI4E.Messaging
             var serviceProvider = new ServiceProviderMock();
             var optionsProvider = BuildMessagingOptions();
             var messageRouterFactory = BuildMessageRouterFactory(optionsProvider);
-            var dispatcher = new MessageDispatcher(
-                registry, messageRouterFactory, new MessageSerializer(TypeResolver.Default), TypeResolver.Default, serviceProvider, optionsProvider);
+            var engine = new MessagingEngine(
+                 registry,
+                 messageRouterFactory,
+                 new MessageSerializer(TypeResolver.Default),
+                 TypeResolver.Default,
+                 serviceProvider,
+                 optionsProvider);
+            var dispatcher = engine.CreateDispatcher();
 
             var dispatchData = new DispatchDataDictionary<string>("testmessage");
             var cancellationTokenSource = new CancellationTokenSource();
@@ -159,8 +177,14 @@ namespace AI4E.Messaging
             var serviceProvider = new ServiceProviderMock();
             var optionsProvider = BuildMessagingOptions();
             var messageRouterFactory = BuildMessageRouterFactory(optionsProvider);
-            var dispatcher = new MessageDispatcher(
-                registry, messageRouterFactory, new MessageSerializer(TypeResolver.Default), TypeResolver.Default, serviceProvider, optionsProvider);
+            var engine = new MessagingEngine(
+                registry,
+                messageRouterFactory,
+                new MessageSerializer(TypeResolver.Default),
+                TypeResolver.Default,
+                serviceProvider,
+                optionsProvider);
+            var dispatcher = engine.CreateDispatcher();
 
             var dispatchData = new DispatchDataDictionary<DerivedMessageType>(new DerivedMessageType());
             var cancellationTokenSource = new CancellationTokenSource();
@@ -186,8 +210,14 @@ namespace AI4E.Messaging
             var serviceProvider = new ServiceProviderMock();
             var optionsProvider = BuildMessagingOptions();
             var messageRouterFactory = BuildMessageRouterFactory(optionsProvider);
-            var dispatcher = new MessageDispatcher(
-                registry, messageRouterFactory, new MessageSerializer(TypeResolver.Default), TypeResolver.Default, serviceProvider, optionsProvider);
+            var engine = new MessagingEngine(
+                registry,
+                messageRouterFactory,
+                new MessageSerializer(TypeResolver.Default),
+                TypeResolver.Default,
+                serviceProvider,
+                optionsProvider);
+            var dispatcher = engine.CreateDispatcher();
 
             var dispatchData = new DispatchDataDictionary<DerivedMessageType>(new DerivedMessageType());
             var cancellationTokenSource = new CancellationTokenSource();
@@ -215,8 +245,14 @@ namespace AI4E.Messaging
             var serviceProvider = new ServiceProviderMock();
             var optionsProvider = BuildMessagingOptions();
             var messageRouterFactory = BuildMessageRouterFactory(optionsProvider);
-            var dispatcher = new MessageDispatcher(
-                registry, messageRouterFactory, new MessageSerializer(TypeResolver.Default), TypeResolver.Default, serviceProvider, optionsProvider);
+            var engine = new MessagingEngine(
+                registry,
+                messageRouterFactory,
+                new MessageSerializer(TypeResolver.Default),
+                TypeResolver.Default,
+                serviceProvider,
+                optionsProvider);
+            var dispatcher = engine.CreateDispatcher();
 
             var dispatchData = new DispatchDataDictionary<DerivedMessageType>(new DerivedMessageType());
             var cancellationTokenSource = new CancellationTokenSource();
@@ -242,8 +278,14 @@ namespace AI4E.Messaging
             var serviceProvider = new ServiceProviderMock();
             var optionsProvider = BuildMessagingOptions();
             var messageRouterFactory = BuildMessageRouterFactory(optionsProvider);
-            var dispatcher = new MessageDispatcher(
-                registry, messageRouterFactory, new MessageSerializer(TypeResolver.Default), TypeResolver.Default, serviceProvider, optionsProvider);
+            var engine = new MessagingEngine(
+                registry,
+                messageRouterFactory,
+                new MessageSerializer(TypeResolver.Default),
+                TypeResolver.Default,
+                serviceProvider,
+                optionsProvider);
+            var dispatcher = engine.CreateDispatcher();
 
             var dispatchData = new DispatchDataDictionary<DerivedMessageType>(new DerivedMessageType());
             var cancellationTokenSource = new CancellationTokenSource();
@@ -261,8 +303,14 @@ namespace AI4E.Messaging
             var serviceProvider = new ServiceProviderMock();
             var optionsProvider = BuildMessagingOptions();
             var messageRouterFactory = BuildMessageRouterFactory(optionsProvider);
-            var dispatcher = new MessageDispatcher(
-                registry, messageRouterFactory, new MessageSerializer(TypeResolver.Default), TypeResolver.Default, serviceProvider, optionsProvider);
+            var engine = new MessagingEngine(
+                registry,
+                messageRouterFactory,
+                new MessageSerializer(TypeResolver.Default),
+                TypeResolver.Default,
+                serviceProvider,
+                optionsProvider);
+            var dispatcher = engine.CreateDispatcher();
 
             var dispatchData = new DispatchDataDictionary<DerivedMessageType>(new DerivedMessageType());
             var cancellationTokenSource = new CancellationTokenSource();
@@ -280,8 +328,14 @@ namespace AI4E.Messaging
             var serviceProvider = new ServiceProviderMock();
             var optionsProvider = BuildMessagingOptions();
             var messageRouterFactory = BuildMessageRouterFactory(optionsProvider);
-            var dispatcher = new MessageDispatcher(
-                registry, messageRouterFactory, new MessageSerializer(TypeResolver.Default), TypeResolver.Default, serviceProvider, optionsProvider);
+            var engine = new MessagingEngine(
+                registry,
+                messageRouterFactory,
+                new MessageSerializer(TypeResolver.Default),
+                TypeResolver.Default,
+                serviceProvider,
+                optionsProvider);
+            var dispatcher = engine.CreateDispatcher();
 
             var dispatchData = new DispatchDataDictionary<DerivedMessageType>(new DerivedMessageType());
             var cancellationTokenSource = new CancellationTokenSource();
@@ -310,8 +364,14 @@ namespace AI4E.Messaging
             var serviceProvider = new ServiceProviderMock();
             var optionsProvider = BuildMessagingOptions();
             var messageRouterFactory = BuildMessageRouterFactory(optionsProvider);
-            var dispatcher = new MessageDispatcher(
-                registry, messageRouterFactory, new MessageSerializer(TypeResolver.Default), TypeResolver.Default, serviceProvider, optionsProvider);
+            var engine = new MessagingEngine(
+                registry,
+                messageRouterFactory,
+                new MessageSerializer(TypeResolver.Default),
+                TypeResolver.Default,
+                serviceProvider,
+                optionsProvider);
+            var dispatcher = engine.CreateDispatcher();
 
             var dispatchData = new DispatchDataDictionary<string>("testmessage");
             var cancellationTokenSource = new CancellationTokenSource();
@@ -345,8 +405,14 @@ namespace AI4E.Messaging
             var serviceProvider = new ServiceProviderMock();
             var optionsProvider = BuildMessagingOptions();
             var messageRouterFactory = BuildMessageRouterFactory(optionsProvider);
-            var dispatcher = new MessageDispatcher(
-                registry, messageRouterFactory, new MessageSerializer(TypeResolver.Default), TypeResolver.Default, serviceProvider, optionsProvider);
+            var engine = new MessagingEngine(
+                registry,
+                messageRouterFactory,
+                new MessageSerializer(TypeResolver.Default),
+                TypeResolver.Default,
+                serviceProvider,
+                optionsProvider);
+            var dispatcher = engine.CreateDispatcher();
 
             var dispatchData = new DispatchDataDictionary<DerivedMessageType>(new DerivedMessageType());
             var cancellationTokenSource = new CancellationTokenSource();
@@ -366,10 +432,10 @@ namespace AI4E.Messaging
     public class StringTestMessageHandler : IMessageHandler<string>
     {
         public ValueTask<IDispatchResult> HandleAsync(
-            DispatchDataDictionary<string> dispatchData,
-            bool publish,
-            bool localDispatch,
-            RouteEndPointScope remoteScope,
+            DispatchDataDictionary<string> dispatchData, 
+            bool publish, 
+            bool localDispatch, 
+            RouteEndPointScope remoteScope, 
             CancellationToken cancellation)
         {
             DispatchData = dispatchData;

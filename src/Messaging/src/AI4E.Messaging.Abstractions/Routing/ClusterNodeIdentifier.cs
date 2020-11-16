@@ -25,10 +25,11 @@ using System.Runtime.Serialization;
 namespace AI4E.Messaging.Routing
 {
     /// <summary>
-    /// Represents a unique identifier of a node in a cluster of routable end-point.
+    /// Represents a unique identifier of a route end-point in a cluster of route end-points.
     /// </summary>
     [Serializable]
-    public readonly struct ClusterNodeIdentifier : IEquatable<ClusterNodeIdentifier>, ISerializable
+    public readonly struct ClusterNodeIdentifier
+        : IEquatable<ClusterNodeIdentifier>, ISerializable
     {
         public static ClusterNodeIdentifier NoClusterNodeIdentifier { get; }
 
@@ -37,21 +38,9 @@ namespace AI4E.Messaging.Routing
             RawValue = rawValue.ToArray();
         }
 
-        internal ClusterNodeIdentifier(ReadOnlyMemory<byte> rawValue, bool createCopy)
+        private ClusterNodeIdentifier(ReadOnlyMemory<byte> rawValue)
         {
-            if (createCopy)
-            {
-                RawValue = rawValue.ToArray();
-            }
-            else
-            {
-                RawValue = rawValue;
-            }
-        }
-
-        public static ClusterNodeIdentifier UnsafeCreateWithoutCopy(ReadOnlyMemory<byte> memory)
-        {
-            return new ClusterNodeIdentifier(memory, createCopy: false);
+            RawValue = rawValue; // TODO: Do we have to perform a copy for safety? See MessageFrame for reference.
         }
 
         private ClusterNodeIdentifier(SerializationInfo serializationInfo, StreamingContext streamingContext)
@@ -59,10 +48,9 @@ namespace AI4E.Messaging.Routing
             if (serializationInfo is null)
                 throw new ArgumentNullException(nameof(serializationInfo));
 
-            // TODO: Do we have to perform a copy for safety? Do we own the array?
             if (serializationInfo.GetValue(nameof(RawValue), typeof(byte[])) is byte[] rawValue)
             {
-                this = new ClusterNodeIdentifier((ReadOnlyMemory<byte>)rawValue, createCopy: false);
+                this = new ClusterNodeIdentifier((ReadOnlyMemory<byte>)rawValue);
             }
             else
             {
@@ -96,6 +84,11 @@ namespace AI4E.Messaging.Routing
         }
 
         public ReadOnlyMemory<byte> RawValue { get; }
+
+        public static ClusterNodeIdentifier UnsafeCreateWithoutCopy(ReadOnlyMemory<byte> rawValue)
+        {
+            return new ClusterNodeIdentifier(rawValue);
+        }
 
         public bool Equals(ClusterNodeIdentifier other)
         {

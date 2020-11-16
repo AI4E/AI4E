@@ -2,7 +2,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2020 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -81,130 +81,175 @@ namespace AI4E.Messaging
 
         #region Dispatcher
 
-        private static void UseDispatcher<TMessageDispatcher>(this IServiceCollection services)
-             where TMessageDispatcher : class, IMessageDispatcher
+        internal static void InternalUseEngine(
+            IServiceCollection services,
+            Func<IServiceProvider, IMessagingEngine> engineResolver)
         {
-            services.AddSingleton<IMessageDispatcher>(provider => provider.GetRequiredService<TMessageDispatcher>());
+            services.AddSingleton(engineResolver);
         }
 
         /// <summary>
-        /// Uses the message dispatcher of the specified type to dispatch messages.
+        /// Uses the messaging engine of the specified type to dispatch messages.
         /// </summary>
-        /// <typeparam name="TMessageDispatcher">The type of message dispatcher.</typeparam>
+        /// <typeparam name="TEngine">The type of messaging engine.</typeparam>
         /// <param name="messagingBuilder">The messaging builder.</param>
         /// <returns>A <see cref="IMessagingBuilder"/> used to configure the messaging service.</returns>
-        /// <remarks>This replaces the currently used message dispatcher.</remarks>
-        public static IMessagingBuilder UseDispatcher<TMessageDispatcher>(this IMessagingBuilder messagingBuilder)
-            where TMessageDispatcher : class, IMessageDispatcher
+        /// <remarks>This replaces the currently used messaging engine.</remarks>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if <paramref name="messagingBuilder"/> is <c>null</c>.
+        /// </exception>
+        public static IMessagingBuilder UseEngine<TEngine>(this IMessagingBuilder messagingBuilder)
+            where TEngine : class, IMessagingEngine
         {
-#pragma warning disable CA1062
-            var services = messagingBuilder.Services;
-#pragma warning restore CA1062
+            if (messagingBuilder is null)
+                throw new ArgumentNullException(nameof(messagingBuilder));
 
-            services.UseDispatcher<TMessageDispatcher>();
-            services.AddSingleton<TMessageDispatcher>();
+            var services = messagingBuilder.Services;
+
+            static IMessagingEngine ResolveEngine(IServiceProvider serviceProvider)
+            {
+                return serviceProvider.GetService<TEngine>();
+            }
+
+            InternalUseEngine(services, ResolveEngine);
+
+            services.AddSingleton<TEngine>();
 
             return messagingBuilder;
         }
 
         /// <summary>
-        /// Uses the specified message dispatcher.
+        /// Uses the specified messaging engine.
         /// </summary>
         /// <param name="messagingBuilder">The messaging builder.</param>
-        /// <param name="instance">The message dispatcher that is used to dispatch messages.</param>
+        /// <param name="instance">The messaging engine that is used to dispatch messages.</param>
         /// <returns>A <see cref="IMessagingBuilder"/> used to configure the messaging service.</returns>
-        /// <remarks>This replaces the currently used message dispatcher.</remarks>
-        /// <exception cref="ArgumentNullException">Thrown if <paramref name="instance"/> is null.</exception>
-        public static IMessagingBuilder UseDispatcher(
-            this IMessagingBuilder messagingBuilder, IMessageDispatcher instance)
+        /// <remarks>This replaces the currently used messaging engine.</remarks>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if <paramref name="messagingBuilder"/> or <paramref name="instance"/> is <c>null</c>.
+        /// </exception>
+        public static IMessagingBuilder UseEngine(
+            this IMessagingBuilder messagingBuilder, IMessagingEngine instance)
         {
-            if (instance == null)
+            if (messagingBuilder is null)
+                throw new ArgumentNullException(nameof(messagingBuilder));
+
+            if (instance is null)
                 throw new ArgumentNullException(nameof(instance));
 
-#pragma warning disable CA1062
             var services = messagingBuilder.Services;
-#pragma warning restore CA1062
-            services.AddSingleton(instance);
+
+            IMessagingEngine ResolveEngine(IServiceProvider serviceProvider)
+            {
+                return instance;
+            }
+
+            InternalUseEngine(services, ResolveEngine);
+
             return messagingBuilder;
         }
 
         /// <summary>
-        /// Uses the message dispatcher generated from the specified factory.
+        /// Uses the messaging engine generated from the specified factory.
         /// </summary>
         /// <param name="messagingBuilder">The messaging builder.</param>
-        /// <param name="factory">The factory that is used to create the message dispatcher.</param>
+        /// <param name="factory">The factory that is used to create the messaging engine.</param>
         /// <returns>A <see cref="IMessagingBuilder"/> used to configure the messaging service.</returns>
-        /// <remarks>This replaces the currently used message dispatcher.</remarks>
-        /// <exception cref="ArgumentNullException">Thrown if <paramref name="factory"/> is null.</exception>
-        public static IMessagingBuilder UseDispatcher(
-            this IMessagingBuilder messagingBuilder, Func<IServiceProvider, IMessageDispatcher> factory)
+        /// <remarks>This replaces the currently used messaging engine.</remarks>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if <paramref name="messagingBuilder"/> or <paramref name="factory"/> is null.
+        /// </exception>
+        public static IMessagingBuilder UseEngine<TEngine>(
+            this IMessagingBuilder messagingBuilder,
+            Func<IServiceProvider, TEngine> factory) where TEngine : class, IMessagingEngine
         {
-            if (factory == null)
+            if (messagingBuilder is null)
+                throw new ArgumentNullException(nameof(messagingBuilder));
+
+            if (factory is null)
                 throw new ArgumentNullException(nameof(factory));
 
-#pragma warning disable CA1062
+            static IMessagingEngine ResolveEngine(IServiceProvider serviceProvider)
+            {
+                return serviceProvider.GetService<TEngine>();
+            }
+
             var services = messagingBuilder.Services;
-#pragma warning restore CA1062
+
+            InternalUseEngine(services, ResolveEngine);
+
             services.AddSingleton(factory);
             return messagingBuilder;
         }
 
         /// <summary>
-        /// Decorates the message dispatcher with the specified type.
+        /// Decorates the messaging engine with the specified type.
         /// </summary>
-        /// <typeparam name="TMessageDispatcher">The type of message dispatcher decorator.</typeparam>
+        /// <typeparam name="TEngine">The type of messaging engine decorator.</typeparam>
         /// <param name="messagingBuilder">The messaging builder.</param>
         /// <returns>A <see cref="IMessagingBuilder"/> used to configure the messaging service.</returns>
-        /// <remarks>This does NOT replace the currently used message dispatcher.</remarks>
-        public static IMessagingBuilder DecorateDispatcher<TMessageDispatcher>(
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if <paramref name="messagingBuilder"/> is <c>null</c>.
+        /// </exception>
+        /// <remarks>This does NOT replace the currently used messaging engine.</remarks>
+        public static IMessagingBuilder DecorateEngine<TEngine>(
             this IMessagingBuilder messagingBuilder)
-             where TMessageDispatcher : class, IMessageDispatcher
+            where TEngine : class, IMessagingEngine
         {
-#pragma warning disable CA1062
-            messagingBuilder.Services.Decorate<IMessageDispatcher, TMessageDispatcher>();
-#pragma warning restore CA1062
+            if (messagingBuilder is null)
+                throw new ArgumentNullException(nameof(messagingBuilder));
+
+            messagingBuilder.Services.Decorate<IMessagingEngine, TEngine>();
+
             return messagingBuilder;
         }
 
         /// <summary>
-        /// Decorates the message dispatcher.
+        /// Decorates the messaging engine.
         /// </summary>
         /// <param name="messagingBuilder">The messaging builder.</param>
-        /// <param name="decorator">The decorator that is used to decorate the current messaging dispatcher.</param>
+        /// <param name="decorator">The decorator that is used to decorate the current messaging engine.</param>
         /// <returns>A <see cref="IMessagingBuilder"/> used to configure the messaging service.</returns>
-        /// <remarks>This does NOT replace the currently used message dispatcher.</remarks>
-        /// <exception cref="ArgumentNullException">Thrown if <paramref name="decorator"/> is null.</exception>
-        public static IMessagingBuilder DecorateDispatcher(
+        /// <remarks>This does NOT replace the currently used messaging engine.</remarks>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if either <paramref name="messagingBuilder"/> or <paramref name="decorator"/> is <c>null</c>.
+        /// </exception>
+        public static IMessagingBuilder DecorateEngine(
             this IMessagingBuilder messagingBuilder,
-            Func<IMessageDispatcher, IMessageDispatcher> decorator)
+            Func<IMessagingEngine, IMessagingEngine> decorator)
         {
-            if (decorator == null)
+            if (messagingBuilder is null)
+                throw new ArgumentNullException(nameof(messagingBuilder));
+
+            if (decorator is null)
                 throw new ArgumentNullException(nameof(decorator));
 
-#pragma warning disable CA1062
             messagingBuilder.Services.Decorate(decorator);
-#pragma warning restore CA1062
+
             return messagingBuilder;
         }
 
         /// <summary>
-        /// Decorates the message dispatcher.
+        /// Decorates the messaging engine.
         /// </summary>
         /// <param name="messagingBuilder">The messaging builder.</param>
-        /// <param name="decorator">The decorator that is used to decorate the current messaging dispatcher.</param>
+        /// <param name="decorator">The decorator that is used to decorate the current messaging engine.</param>
         /// <returns>A <see cref="IMessagingBuilder"/> used to configure the messaging service.</returns>
-        /// <remarks>This does NOT replace the currently used message dispatcher.</remarks>
-        /// <exception cref="ArgumentNullException">Thrown if <paramref name="decorator"/> is null.</exception>
-        public static IMessagingBuilder DecorateDispatcher(
+        /// <remarks>This does NOT replace the currently used messaging engine.</remarks>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if either <paramref name="messagingBuilder"/> or <paramref name="decorator"/> is <c>null</c>.
+        /// </exception>
+        public static IMessagingBuilder DecorateEngine(
             this IMessagingBuilder messagingBuilder,
-            Func<IMessageDispatcher, IServiceProvider, IMessageDispatcher> decorator)
+            Func<IMessagingEngine, IServiceProvider, IMessagingEngine> decorator)
         {
-            if (decorator == null)
+            if (messagingBuilder is null)
+                throw new ArgumentNullException(nameof(messagingBuilder));
+
+            if (decorator is null)
                 throw new ArgumentNullException(nameof(decorator));
 
-#pragma warning disable CA1062
             messagingBuilder.Services.Decorate(decorator);
-#pragma warning restore CA1062
             return messagingBuilder;
         }
 

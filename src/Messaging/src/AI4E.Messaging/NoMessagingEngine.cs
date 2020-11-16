@@ -27,29 +27,27 @@ using Microsoft.Extensions.DependencyInjection;
 namespace AI4E.Messaging
 {
     /// <summary>
-    /// Implements the null-object design pattern for the <see cref="IMessageDispatcher"/> interface.
+    /// Implements the null-object design pattern for the <see cref="IMessagingEngine"/> interface.
     /// </summary>
-    public sealed class NoMessageDispatcher : IMessageDispatcher
+    public sealed class NoMessagingEngine : IMessagingEngine
     {
-        internal NoMessageDispatcher(IMessagingEngine engine, IServiceProvider serviceProvider)
+        /// <summary>
+        /// Gets the singleton instance of the <see cref="NoMessagingEngine"/> type.
+        /// </summary>
+        public static NoMessagingEngine Instance { get; } = new NoMessagingEngine();
+
+        private NoMessagingEngine() { }
+
+        /// <inheritdoc />
+        public IMessageDispatcher CreateDispatcher(IServiceProvider serviceProvider)
         {
-            Engine = engine;
-            ServiceProvider = serviceProvider;
+            if (serviceProvider is null)
+                throw new ArgumentNullException(nameof(serviceProvider));
+
+            return new NoMessageDispatcher(this, serviceProvider);
         }
 
-        /// <inheritdoc />
-        public IMessagingEngine Engine { get; }
-
-        /// <inheritdoc />
-        public IServiceProvider ServiceProvider { get; }
-
-        /// <inheritdoc />
-        public ValueTask<RouteEndPointScope> GetScopeAsync(CancellationToken cancellation = default)
-        {
-            return new ValueTask<RouteEndPointScope>(result: default);
-        }
-
-        IMessageHandlerProvider IMessageDispatcher.MessageHandlerProvider => MessageHandlerProvider;
+        IMessageHandlerProvider IMessagingEngine.MessageHandlerProvider => MessageHandlerProvider;
 
         /// <summary>
         /// Gets the message handler provider, 
@@ -60,23 +58,13 @@ namespace AI4E.Messaging
 #pragma warning restore CA1822
 
         /// <inheritdoc />
-        public ValueTask<IDispatchResult> DispatchAsync(
-            DispatchDataDictionary dispatchData,
-            bool publish,
-            RouteEndPointScope scope,
-            CancellationToken cancellation = default)
-        {
-            if (dispatchData is null)
-                throw new ArgumentNullException(nameof(dispatchData));
-
-            return new ValueTask<IDispatchResult>(new DispatchFailureDispatchResult(dispatchData.MessageType));
-        }
-
-        /// <inheritdoc /> />
         public ValueTask<RouteEndPointAddress> GetLocalEndPointAsync(CancellationToken cancellation = default)
         {
             return new ValueTask<RouteEndPointAddress>(result: default);
         }
+
+        /// <inheritdoc />
+        public Task Initialization => Task.CompletedTask;
 
         /// <inheritdoc />
         public void Dispose() { }
@@ -86,5 +74,7 @@ namespace AI4E.Messaging
         {
             return default;
         }
+
+        public IServiceProvider ServiceProvider { get; } = new ServiceCollection().BuildServiceProvider();
     }
 }

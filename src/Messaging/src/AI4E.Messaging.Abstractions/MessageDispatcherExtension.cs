@@ -529,8 +529,8 @@ namespace AI4E.Messaging
         /// Thrown if <paramref name="messageDispatcher"/> is <c>null</c>.
         /// </exception>
         public static ValueTask<IDispatchResult> QueryByIdAsync<TId, TResult>(
-            this IMessageDispatcher messageDispatcher,
-            TId id,
+            this IMessageDispatcher messageDispatcher, 
+            TId id, 
             CancellationToken cancellation = default)
             where TId : struct, IEquatable<TId>
         {
@@ -555,8 +555,8 @@ namespace AI4E.Messaging
         /// Thrown if <paramref name="messageDispatcher"/> is <c>null</c>.
         /// </exception>
         public static ValueTask<IDispatchResult> QueryByIdAsync<TResult>(
-            this IMessageDispatcher messageDispatcher,
-            Guid id,
+            this IMessageDispatcher messageDispatcher, 
+            Guid id, 
             CancellationToken cancellation = default)
         {
             return messageDispatcher.DispatchAsync(new ByIdQuery<TResult>(id), cancellation);
@@ -581,8 +581,8 @@ namespace AI4E.Messaging
         /// Thrown if <paramref name="messageDispatcher"/> is <c>null</c>.
         /// </exception>
         public static ValueTask<IDispatchResult> QueryByParentAsync<TId, TResult>(
-            this IMessageDispatcher messageDispatcher,
-            TId parentId,
+            this IMessageDispatcher messageDispatcher, 
+            TId parentId, 
             CancellationToken cancellation = default)
             where TId : struct, IEquatable<TId>
         {
@@ -607,8 +607,8 @@ namespace AI4E.Messaging
         /// Thrown if <paramref name="messageDispatcher"/> is <c>null</c>.
         /// </exception>
         public static ValueTask<IDispatchResult> QueryByParentAsync<TResult>(
-            this IMessageDispatcher messageDispatcher,
-            Guid parentId,
+            this IMessageDispatcher messageDispatcher, 
+            Guid parentId, 
             CancellationToken cancellation = default)
         {
             return messageDispatcher.DispatchAsync(new ByParentQuery<TResult>(parentId), cancellation);
@@ -712,7 +712,7 @@ namespace AI4E.Messaging
                 throw new ArgumentNullException(nameof(data));
 
             DispatchInternal(
-                messageDispatcher,
+                messageDispatcher, 
                 new DispatchDataDictionary<TMessage>(message, data), publish, retryOnFailure, logger);
         }
 
@@ -747,7 +747,7 @@ namespace AI4E.Messaging
                 throw new ArgumentNullException(nameof(message));
 
             DispatchInternal(
-                messageDispatcher,
+                messageDispatcher, 
                 new DispatchDataDictionary<TMessage>(message), publish, retryOnFailure, logger);
         }
     }

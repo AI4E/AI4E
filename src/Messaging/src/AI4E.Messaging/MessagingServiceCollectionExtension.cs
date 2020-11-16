@@ -2,7 +2,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2020 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -50,28 +50,41 @@ namespace Microsoft.Extensions.DependencyInjection
                 services.AddOptions();
                 services.AddAssemblyRegistry();
 
+                // Add global helpers if not already present.
                 services.TryAddSingleton<IDateTimeProvider, DateTimeProvider>();
                 services.TryAddSingleton<ITypeResolver>(TypeResolver.Default);
-                services.TryAddSingleton<IMessageHandlerRegistry, MessageHandlerRegistry>();
-                services.TryAddSingleton<IMessageDispatcher, MessageDispatcher>();
-                services.TryAddSingleton<IMessageSerializer, MessageSerializer>();
-                services.TryAddSingleton<IMessageHandlerResolver, MessageHandlerResolver>();
+
+                // Add messaging helper services
+                services.AddSingleton<IMessageHandlerRegistry, MessageHandlerRegistry>();
+                services.AddSingleton<IMessageSerializer, MessageSerializer>();
+                services.AddSingleton<IMessageHandlerResolver, MessageHandlerResolver>();
 
                 if (!suppressRoutingSystem)
                 {
                     AddRoutingSystem(services);
                 }
 
+                // Add the messaging marker service.
+                services.AddSingleton<MessagingMarkerService>();
+
                 // Force the message-dispatcher to initialize on application startup.
                 // This is needed to ensure handlers are available and registered in multi-process or networking setups.
-                services.ConfigureApplicationServices(manager => manager.AddService<IMessageDispatcher>(isRequiredService: true));
-                
+                services.ConfigureApplicationServices(
+                    manager => manager.AddService<IMessagingEngine>(
+                        engine => engine.Initialization, isRequiredService: true));
 
                 builder = new MessagingBuilderImpl(services)
                 {
                     RoutingSystemSuppressed = suppressRoutingSystem
                 };
+
+                // Add the message handlers to the messaging system
                 MessageHandlers.Register(builder);
+
+                // Add the message dispatcher infrastructure
+                builder.UseEngine<MessagingEngine>();
+                services.AddScoped(CreateDispatcher);
+
                 services.AddSingleton(builder);
             }
             else if (builder.RoutingSystemSuppressed && !suppressRoutingSystem)
@@ -81,6 +94,12 @@ namespace Microsoft.Extensions.DependencyInjection
             }
 
             return builder;
+        }
+
+        private static IMessageDispatcher CreateDispatcher(IServiceProvider serviceProvider)
+        {
+            var engine = serviceProvider.GetRequiredService<IMessagingEngine>();
+            return engine.CreateDispatcher(serviceProvider);
         }
 
         private static void AddRoutingSystem(IServiceCollection services)
@@ -106,5 +125,18 @@ namespace Microsoft.Extensions.DependencyInjection
             builder.Services.Configure(configuration);
             return builder;
         }
+    }
+
+    internal sealed class MessagingMarkerService
+    {
+        public MessagingMarkerService(IServiceProvider rootServiceProvider)
+        {
+            if (rootServiceProvider is null)
+                throw new ArgumentNullException(nameof(rootServiceProvider));
+
+            RootServiceProvider = rootServiceProvider;
+        }
+
+        public IServiceProvider RootServiceProvider { get; }
     }
 }

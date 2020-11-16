@@ -23,6 +23,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Messaging.Routing;
+using Moq;
 
 namespace AI4E.Messaging.Mocks
 {
@@ -33,20 +34,41 @@ namespace AI4E.Messaging.Mocks
         public bool IsDisposed { get; set; } = false;
         public RouteEndPointAddress LocalEndPoint { get; set; }
 
+        public async ValueTask<IDispatchResult> DispatchAsync(
+            DispatchDataDictionary dispatchData,
+            bool publish,
+            CancellationToken cancellation = default)
+        {
+            var recordedMessage = new RecordedMessage(dispatchData, publish, explicitLocal: false, endPoint: null, cancellation);
+            var dispatchTask = recordedMessage.DispatchTask;
+
+            lock (_mutex)
+            {
+                if (IsDisposed)
+                    throw new ObjectDisposedException(GetType().FullName);
+
+                _recordedMessages.Add(recordedMessage);
+            }
+
+            var result = await dispatchTask;
+
+            lock (_mutex)
+            {
+                _recordedMessages.Remove(recordedMessage);
+            }
+
+            return result;
+        }
+
         public IMessageHandlerProvider MessageHandlerProvider { get; set; }
 
         public async ValueTask<IDispatchResult> DispatchAsync(
             DispatchDataDictionary dispatchData,
             bool publish,
-            RouteEndPointScope scope,
+            RouteEndPointScope remoteScope,
             CancellationToken cancellation = default)
         {
-            RouteEndPointAddress? endPoint = scope.EndPointAddress;
-
-            if (scope == default)
-                endPoint = null;
-
-            var recordedMessage = new RecordedMessage(dispatchData, publish, explicitLocal: false, endPoint, cancellation);
+            var recordedMessage = new RecordedMessage(dispatchData, publish, explicitLocal: false, remoteScope.EndPointAddress, cancellation);
             var dispatchTask = recordedMessage.DispatchTask;
 
             lock (_mutex)
@@ -93,9 +115,10 @@ namespace AI4E.Messaging.Mocks
             return result;
         }
 
-        public ValueTask<RouteEndPointScope> GetScopeAsync(CancellationToken cancellation)
+        public ValueTask<RouteEndPointAddress> GetLocalEndPointAsync(
+            CancellationToken cancellation = default)
         {
-            return new ValueTask<RouteEndPointScope>(new RouteEndPointScope(LocalEndPoint));
+            return new ValueTask<RouteEndPointAddress>(LocalEndPoint);
         }
 
         public void Dispose() { IsDisposed = true; }
@@ -104,6 +127,24 @@ namespace AI4E.Messaging.Mocks
         {
             Dispose();
             return default;
+        }
+
+        private static readonly IServiceProvider _serviceProvider = BuildServiceProvider();
+
+        private static IServiceProvider BuildServiceProvider()
+        {
+            var mock = new Mock<IServiceProvider>();
+            mock.Setup(p => p.GetService(It.IsAny<Type>())).Returns<object>(null);
+            return mock.Object;
+        }
+
+        public IServiceProvider ServiceProvider => _serviceProvider;
+
+        public IMessagingEngine Engine => NoMessagingEngine.Instance;
+
+        public ValueTask<RouteEndPointScope> GetScopeAsync(CancellationToken cancellation = default)
+        {
+            return new ValueTask<RouteEndPointScope>(new RouteEndPointScope(LocalEndPoint));
         }
     }
 

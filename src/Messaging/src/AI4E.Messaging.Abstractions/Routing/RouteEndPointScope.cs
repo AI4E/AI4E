@@ -29,16 +29,19 @@ namespace AI4E.Messaging.Routing
 
         public RouteEndPointScope(
             RouteEndPointAddress endPointAddress,
-            ClusterNodeIdentifier clusterNodeIdentifier)
+            ClusterNodeIdentifier clusterNodeIdentifier,
+            long? scopeIdentifier = null)
         {
             EndPointAddress = endPointAddress;
             ClusterNodeIdentifier = clusterNodeIdentifier;
+            ScopeIdentifier = scopeIdentifier;
         }
 
         public RouteEndPointScope(RouteEndPointAddress endPointAddress)
         {
             EndPointAddress = endPointAddress;
             ClusterNodeIdentifier = ClusterNodeIdentifier.NoClusterNodeIdentifier;
+            ScopeIdentifier = 0;
         }
 
         /// <summary>
@@ -52,6 +55,11 @@ namespace AI4E.Messaging.Routing
         /// if the node identifier is not specified.
         /// </summary>
         public ClusterNodeIdentifier ClusterNodeIdentifier { get; }
+
+        /// <summary>
+        /// Gets the scope identifier that identifies the scope of the end-point cluster node.
+        /// </summary>
+        public long? ScopeIdentifier { get; }
 
         public bool CanBeRoutedTo(in RouteEndPointScope target)
         {
@@ -67,7 +75,10 @@ namespace AI4E.Messaging.Routing
             if (ClusterNodeIdentifier != target.ClusterNodeIdentifier)
                 return false;
 
-            return true;
+            if (target.ScopeIdentifier == null)
+                return true;
+
+            return ScopeIdentifier == target.ScopeIdentifier;
         }
 
         public bool Equals(RouteEndPointScope other)
@@ -78,7 +89,8 @@ namespace AI4E.Messaging.Routing
         public bool Equals(in RouteEndPointScope other)
         {
             return EndPointAddress == other.EndPointAddress &&
-                   ClusterNodeIdentifier == other.ClusterNodeIdentifier;
+                   ClusterNodeIdentifier == other.ClusterNodeIdentifier &&
+                   ScopeIdentifier == other.ScopeIdentifier;
         }
 
         public override bool Equals(object? obj)
@@ -88,7 +100,7 @@ namespace AI4E.Messaging.Routing
 
         public override int GetHashCode()
         {
-            return HashCode.Combine(EndPointAddress, ClusterNodeIdentifier);
+            return HashCode.Combine(EndPointAddress, ClusterNodeIdentifier, ScopeIdentifier);
         }
 
         public override string ToString()
@@ -103,7 +115,12 @@ namespace AI4E.Messaging.Routing
                 return EndPointAddress.ToString();
             }
 
-            return $"{EndPointAddress} Cluster node: {ClusterNodeIdentifier}";
+            if (ScopeIdentifier is null)
+            {
+                return $"{EndPointAddress} Cluster node: {ClusterNodeIdentifier}";
+            }
+
+            return $"{EndPointAddress} Cluster node: {ClusterNodeIdentifier} Scope: {ScopeIdentifier}";
         }
 
         public static bool operator ==(in RouteEndPointScope left, in RouteEndPointScope right)
@@ -123,6 +140,10 @@ namespace AI4E.Messaging.Routing
 
             writer.WriteBytes(routeEndPointScope.EndPointAddress.Utf8EncodedValue.Span);
             writer.WriteBytes(routeEndPointScope.ClusterNodeIdentifier.RawValue.Span);
+            writer.Write(routeEndPointScope.ScopeIdentifier.HasValue);
+
+            if (routeEndPointScope.ScopeIdentifier.HasValue)
+                writer.Write(routeEndPointScope.ScopeIdentifier.Value);
         }
 
         public static void Read(BinaryReader reader, out RouteEndPointScope routeEndPointScope)
@@ -132,12 +153,14 @@ namespace AI4E.Messaging.Routing
 
             var addressRawValue = reader.ReadBytes();
             var clusterIdentifierRawValue = reader.ReadBytes();
+            var hasScopeIdentifier = reader.ReadBoolean();
+            var scopeIdentifier = hasScopeIdentifier ? (long?)reader.ReadInt64() : null;
 
             var endPointAddress = new RouteEndPointAddress(addressRawValue);
             var endPointClusterIdentifier = ClusterNodeIdentifier.UnsafeCreateWithoutCopy(
                 clusterIdentifierRawValue);
 
-            routeEndPointScope = new RouteEndPointScope(endPointAddress, endPointClusterIdentifier);
+            routeEndPointScope = new RouteEndPointScope(endPointAddress, endPointClusterIdentifier, scopeIdentifier);
         }
     }
 }

@@ -503,9 +503,12 @@ namespace AI4E.Messaging.Routing
             }
         }
 
+        private long _nextScopeSeqNum;
+
         public RouteEndPointScope CreateScope()
         {
-            return new RouteEndPointScope(_routeEndPoint.EndPoint, _routeEndPoint.ClusterNodeIdentifier);
+            var seqNum = Interlocked.Increment(ref _nextScopeSeqNum);
+            return new RouteEndPointScope(_routeEndPoint.EndPoint, _routeEndPoint.ClusterNodeIdentifier, seqNum);
         }
 
         public bool OwnsScope(RouteEndPointScope scope)

@@ -25,15 +25,26 @@ using AI4E.Messaging.Routing;
 
 namespace AI4E.Messaging
 {
+
     /// <summary>
     /// Represents a message dispatcher that dispatches messages to message handlers.
     /// </summary>
-    public interface IMessageDispatcher : IDisposable, IAsyncDisposable
+    public interface IMessageDispatcher : IAsyncDisposable, IDisposable
     {
+        /// <summary>
+        /// Gets the <see cref="IServiceProvider"/> of the message dispatcher that is used to resolve services.
+        /// </summary>
+        IServiceProvider ServiceProvider { get; }
+
         /// <summary>
         /// Gets the <see cref="IMessageHandlerProvider"/> that is used to load (local) message handlers.
         /// </summary>
         IMessageHandlerProvider MessageHandlerProvider { get; }
+
+        /// <summary>
+        /// Gets the engine that was used to create the message dispatcher.
+        /// </summary>
+        IMessagingEngine Engine { get; }
 
         /// <summary>
         /// Asynchronously dispatches a message of the specified message type.
@@ -170,8 +181,6 @@ namespace AI4E.Messaging
         /// When evaluated, the tasks result contains the local end-point scope of the message dispatcher.
         /// </returns>
         ValueTask<RouteEndPointScope> GetScopeAsync(CancellationToken cancellation = default);
-
-        // TODO: Rename to GetLocalScopeAsync
 
         /// <summary>
         /// Asynchronously retrieves the local end-point of the message dispatcher.
