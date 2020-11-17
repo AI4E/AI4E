@@ -2,6 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Messaging;
+using AI4E.Messaging.Routing;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace AI4E.Storage.Domain.Projection
@@ -22,6 +23,7 @@ namespace AI4E.Storage.Domain.Projection
             DispatchDataDictionary<ProjectEntityMessage> dispatchData,
             bool publish,
             bool localDispatch,
+            RouteEndPointScope remoteScope,
             CancellationToken cancellation)
         {
             if (dispatchData is null)

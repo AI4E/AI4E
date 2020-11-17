@@ -2,7 +2,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2020 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -32,7 +32,7 @@ namespace AI4E.Messaging.Routing
         /// The message that is the response generated as result of handling the request.
         /// </param>
         /// <param name="handled">
-        /// A boolean value indicating whether the request message was handled succesfully.
+        /// A boolean value indicating whether the request message was handled successfully.
         /// </param>
         public RouteMessageHandleResult(RouteMessage<IDispatchResult> routeMessage, bool handled)
         {
@@ -46,7 +46,7 @@ namespace AI4E.Messaging.Routing
         public RouteMessage<IDispatchResult> RouteMessage { get; }
 
         /// <summary>
-        /// Gets a boolean value indicating whether the request message was handled succesfully 
+        /// Gets a boolean value indicating whether the request message was handled successfully 
         /// in the context of the message routing layer.
         /// </summary>
         /// <remarks>

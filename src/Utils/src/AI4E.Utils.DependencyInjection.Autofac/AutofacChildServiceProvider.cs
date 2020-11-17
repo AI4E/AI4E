@@ -2,7 +2,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2020 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -58,7 +58,7 @@ namespace AI4E.Utils.DependencyInjection.Autofac
     /// <seealso cref="ISupportRequiredService" />
     public class AutofacChildServiceProvider : IChildServiceProvider, ISupportRequiredService
     {
-        private bool _disposed = false;
+        private bool _disposed;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="AutofacChildServiceProvider"/> class.
@@ -68,6 +68,9 @@ namespace AI4E.Utils.DependencyInjection.Autofac
         /// </param>
         public AutofacChildServiceProvider(ILifetimeScope lifetimeScope)
         {
+            if (lifetimeScope is null)
+                throw new ArgumentNullException(nameof(lifetimeScope));
+
             LifetimeScope = lifetimeScope;
         }
 
@@ -148,7 +151,7 @@ namespace AI4E.Utils.DependencyInjection.Autofac
             if (!_disposed)
             {
                 _disposed = true;
-                await LifetimeScope.DisposeAsync();
+                await LifetimeScope.DisposeAsync().ConfigureAwait(false);
 #pragma warning disable CA1816
                 GC.SuppressFinalize(this);
 #pragma warning restore CA1816

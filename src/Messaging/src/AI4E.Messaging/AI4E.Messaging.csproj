@@ -10,6 +10,7 @@
     <PackageReference Include="System.Collections.Immutable" /> 
     <PackageReference Include="Microsoft.Extensions.Logging" /> 
     <PackageReference Include="System.Linq.Async" />
+    <PackageReference Include="System.Threading.Channels" />
   </ItemGroup>
 
   <ItemGroup>

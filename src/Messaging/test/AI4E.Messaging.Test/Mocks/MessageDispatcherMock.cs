@@ -2,7 +2,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2019 Andreas Truetschel and contributors.
+ * Copyright (c) 2019 - 2020 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -23,6 +23,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Messaging.Routing;
+using Moq;
 
 namespace AI4E.Messaging.Mocks
 {
@@ -64,10 +65,10 @@ namespace AI4E.Messaging.Mocks
         public async ValueTask<IDispatchResult> DispatchAsync(
             DispatchDataDictionary dispatchData,
             bool publish,
-            RouteEndPointAddress endPoint,
+            RouteEndPointScope remoteScope,
             CancellationToken cancellation = default)
         {
-            var recordedMessage = new RecordedMessage(dispatchData, publish, explicitLocal: false, endPoint, cancellation);
+            var recordedMessage = new RecordedMessage(dispatchData, publish, explicitLocal: false, remoteScope.EndPointAddress, cancellation);
             var dispatchTask = recordedMessage.DispatchTask;
 
             lock (_mutex)
@@ -126,6 +127,24 @@ namespace AI4E.Messaging.Mocks
         {
             Dispose();
             return default;
+        }
+
+        private static readonly IServiceProvider _serviceProvider = BuildServiceProvider();
+
+        private static IServiceProvider BuildServiceProvider()
+        {
+            var mock = new Mock<IServiceProvider>();
+            mock.Setup(p => p.GetService(It.IsAny<Type>())).Returns<object>(null);
+            return mock.Object;
+        }
+
+        public IServiceProvider ServiceProvider => _serviceProvider;
+
+        public IMessagingEngine Engine => NoMessagingEngine.Instance;
+
+        public ValueTask<RouteEndPointScope> GetScopeAsync(CancellationToken cancellation = default)
+        {
+            return new ValueTask<RouteEndPointScope>(new RouteEndPointScope(LocalEndPoint));
         }
     }
 

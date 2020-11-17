@@ -27,7 +27,7 @@ namespace AI4E
 {
     public interface IAssemblyRegistry
     {
-        public void AddAssemblies(
+        public IAssemblyRegistry AddAssemblies(
             IEnumerable<Assembly> assemblies,
             AssemblyLoadContext? assemblyLoadContext = null,
             IServiceProvider? assemblyServiceProvider = null);
@@ -40,7 +40,7 @@ namespace AI4E
         /// The <see cref="AssemblyLoadContext"/> that <paramref name="assembly"/> was loaded from, or <c>null</c>.
         /// </param>
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="assembly"/> is <c>null</c>.</exception>
-        public void AddAssembly(
+        public IAssemblyRegistry AddAssembly(
             Assembly assembly,
             AssemblyLoadContext? assemblyLoadContext = null,
             IServiceProvider? assemblyServiceProvider = null)
@@ -48,25 +48,25 @@ namespace AI4E
             if (assembly is null)
                 throw new ArgumentNullException(nameof(assembly));
 
-            AddAssemblies(assembly.Yield(), assemblyLoadContext, assemblyServiceProvider);
+            return AddAssemblies(assembly.Yield(), assemblyLoadContext, assemblyServiceProvider);
         }
 
-        public void RemoveAssemblies(IEnumerable<Assembly> assemblies);
+        public IAssemblyRegistry RemoveAssemblies(IEnumerable<Assembly> assemblies);
 
         /// <summary>
         /// Removes an assembly from the manager.
         /// </summary>
         /// <param name="assembly">The assembly to remove.</param>
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="assembly"/> is <c>null</c>.</exception>
-        public void RemoveAssembly(Assembly assembly)
+        public IAssemblyRegistry RemoveAssembly(Assembly assembly)
         {
             if (assembly is null)
                 throw new ArgumentNullException(nameof(assembly));
 
-            RemoveAssemblies(assembly.Yield());
+            return RemoveAssemblies(assembly.Yield());
         }
 
-        public void ClearAssemblies();
+        public IAssemblyRegistry ClearAssemblies();
 
         IAssemblySource AssemblySource { get; }
 

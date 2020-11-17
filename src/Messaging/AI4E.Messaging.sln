@@ -31,6 +31,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Messaging.Primitives.T
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Messaging.Primitives", "src\AI4E.Messaging.Primitives\AI4E.Messaging.Primitives.csproj", "{F998DE8C-12AD-432D-BE73-634E61BE6885}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AI4E.Messaging.Scoping.EndToEndTest", "test\AI4E.Messaging.Scoping.EndToEndTest\AI4E.Messaging.Scoping.EndToEndTest.csproj", "{D9C8C3F5-5C54-4CC5-9A59-F7705DCB2D2C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -81,6 +83,10 @@ Global
 		{F998DE8C-12AD-432D-BE73-634E61BE6885}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F998DE8C-12AD-432D-BE73-634E61BE6885}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F998DE8C-12AD-432D-BE73-634E61BE6885}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D9C8C3F5-5C54-4CC5-9A59-F7705DCB2D2C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D9C8C3F5-5C54-4CC5-9A59-F7705DCB2D2C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D9C8C3F5-5C54-4CC5-9A59-F7705DCB2D2C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D9C8C3F5-5C54-4CC5-9A59-F7705DCB2D2C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -97,6 +103,7 @@ Global
 		{AC289DD4-7BC0-4FA9-B8E6-8EA149A74049} = {4C9135D0-966D-4382-9AEB-170E4A9827BA}
 		{A8E62A9C-9053-4FE7-9538-CF224F8714DC} = {1A468BB0-1F78-41D7-B399-BE67E1399886}
 		{F998DE8C-12AD-432D-BE73-634E61BE6885} = {621D8F60-BDA8-46A3-9983-DA2B37AE6B14}
+		{D9C8C3F5-5C54-4CC5-9A59-F7705DCB2D2C} = {1A468BB0-1F78-41D7-B399-BE67E1399886}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {BCE694B7-D9D2-439F-9225-C8693CA4C6CA}

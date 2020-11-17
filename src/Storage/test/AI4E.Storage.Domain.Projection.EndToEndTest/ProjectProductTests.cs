@@ -21,7 +21,7 @@ namespace AI4E.Storage.Domain.Projection.EndToEndTest
             setup.ConfigureServices(serviceCollection);
 
             ServiceProvider = serviceCollection.BuildServiceProvider(validateScopes: true);
-            MessageDispatcher = ServiceProvider.GetRequiredService<IMessageDispatcher>();
+            MessageDispatcher = ServiceProvider.GetRequiredService<IMessagingEngine>().CreateDispatcher();
         }
 
         [Fact]

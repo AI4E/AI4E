@@ -3,6 +3,7 @@ using System.Collections.Immutable;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Messaging;
+using AI4E.Messaging.Routing;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace AI4E.Storage.Domain.EndToEndTest.Utils
@@ -56,6 +57,7 @@ namespace AI4E.Storage.Domain.EndToEndTest.Utils
             DispatchDataDictionary<T> dispatchData,
             bool publish,
             bool localDispatch,
+            RouteEndPointScope remoteScope,
             CancellationToken cancellation)
         {
             if (!publish)

@@ -2,7 +2,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2020 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -25,15 +25,26 @@ using AI4E.Messaging.Routing;
 
 namespace AI4E.Messaging
 {
+
     /// <summary>
     /// Represents a message dispatcher that dispatches messages to message handlers.
     /// </summary>
-    public interface IMessageDispatcher : IDisposable, IAsyncDisposable
+    public interface IMessageDispatcher : IAsyncDisposable, IDisposable
     {
+        /// <summary>
+        /// Gets the <see cref="IServiceProvider"/> of the message dispatcher that is used to resolve services.
+        /// </summary>
+        IServiceProvider ServiceProvider { get; }
+
         /// <summary>
         /// Gets the <see cref="IMessageHandlerProvider"/> that is used to load (local) message handlers.
         /// </summary>
         IMessageHandlerProvider MessageHandlerProvider { get; }
+
+        /// <summary>
+        /// Gets the engine that was used to create the message dispatcher.
+        /// </summary>
+        IMessagingEngine Engine { get; }
 
         /// <summary>
         /// Asynchronously dispatches a message of the specified message type.
@@ -52,46 +63,140 @@ namespace AI4E.Messaging
         /// A task representing the asynchronous operation.
         /// The tasks result contains an <see cref="IDispatchResult"/> indicating message handling state.
         /// </returns>
-        /// <exception cref="ArgumentNullException">Thrown if <paramref name="dispatchData"/> is <c>null</c>.</exception>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if <paramref name="dispatchData"/> is <c>null</c>.
+        /// </exception>
         ValueTask<IDispatchResult> DispatchAsync(
             DispatchDataDictionary dispatchData,
             bool publish,
-            CancellationToken cancellation = default);
+            CancellationToken cancellation = default)
+        {
+            return DispatchAsync(dispatchData, publish, RouteEndPointScope.NoScope, cancellation);
+        }
 
         /// <summary>
-        /// Asynchronously dispatches a message of the specified message type.
+        /// Asynchronously dispatches a message of the specified message type to the specified end-point address.
         /// </summary>
-        /// <param name="messageType">The type of message.</param>
-        /// <param name="message">The message to dispatch.</param>
+        /// <param name="dispatchData">
+        /// The dispatch data dictionary that contains the message and supporting values.
+        /// </param>
         /// <param name="publish">
         /// A boolean value specifying whether the message shall be published to all handlers.
         /// </param>
-        /// <param name="receiver">The reveiver, the message shall be dispatched to.</param>
+        /// <param name="endPoint">The end-point of the receiver, the message shall be dispatched to.</param>
         /// <param name="cancellation">
         /// A <see cref="CancellationToken"/> used to cancel the asynchronous operation
         /// or <see cref="CancellationToken.None"/>.
         /// </param>
         /// <returns>
-        /// A task representing the asynchronous operation.
+        /// A <see cref="ValueTask{IDispatchResult}"/> representing the asynchronous operation.
         /// The tasks result contains an <see cref="IDispatchResult"/> indicating message handling state.
         /// </returns>
         /// <exception cref="ArgumentNullException">
-        /// Thrown if either <paramref name="messageType"/> or <paramref name="message"/> is <c>null</c>.
-        /// </exception>
-        /// <exception cref="ArgumentException">
-        /// Thrown if <paramref name="message"/> is not of type <paramref name="messageType"/> or a derived type.
+        /// Thrown if <paramref name="dispatchData"/> is <c>null</c>.
         /// </exception>
         ValueTask<IDispatchResult> DispatchAsync(
             DispatchDataDictionary dispatchData,
             bool publish,
             RouteEndPointAddress endPoint,
-            CancellationToken cancellation = default);
+            CancellationToken cancellation = default)
+        {
+            return DispatchAsync(dispatchData, publish, new RouteEndPointScope(endPoint), cancellation);
+        }
 
-        ValueTask<IDispatchResult> DispatchLocalAsync(
+        /// <summary>
+        /// Asynchronously dispatches a message of the specified message type to the specified end-point scope.
+        /// </summary>
+        /// <param name="dispatchData">
+        /// The dispatch data dictionary that contains the message and supporting values.
+        /// </param>
+        /// <param name="publish">
+        /// A boolean value specifying whether the message shall be published to all handlers.
+        /// </param>
+        /// <param name="remoteScope">The end-point scope of the receiver, the message shall be dispatched to.</param>
+        /// <param name="cancellation">
+        /// A <see cref="CancellationToken"/> used to cancel the asynchronous operation
+        /// or <see cref="CancellationToken.None"/>.
+        /// </param>
+        /// <returns>
+        /// A <see cref="ValueTask{IDispatchResult}"/> representing the asynchronous operation.
+        /// The tasks result contains an <see cref="IDispatchResult"/> indicating message handling state.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if <paramref name="dispatchData"/> is <c>null</c>.
+        /// </exception>
+        ValueTask<IDispatchResult> DispatchAsync(
             DispatchDataDictionary dispatchData,
             bool publish,
+            RouteEndPointScope remoteScope,
             CancellationToken cancellation = default);
 
-        ValueTask<RouteEndPointAddress> GetLocalEndPointAsync(CancellationToken cancellation = default);
+        /// <summary>
+        /// Asynchronously dispatches a message of the specified message type to the local end-point.
+        /// </summary>
+        /// <param name="dispatchData">
+        /// The dispatch data dictionary that contains the message and supporting values.
+        /// </param>
+        /// <param name="publish">
+        /// A boolean value specifying whether the message shall be published to all handlers.
+        /// </param>
+        /// <param name="cancellation">
+        /// A <see cref="CancellationToken"/> used to cancel the asynchronous operation
+        /// or <see cref="CancellationToken.None"/>.
+        /// </param>
+        /// <returns>
+        /// A <see cref="ValueTask{IDispatchResult}"/> representing the asynchronous operation.
+        /// The tasks result contains an <see cref="IDispatchResult"/> indicating message handling state.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if <paramref name="dispatchData"/> is <c>null</c>.
+        /// </exception>
+        /// <remarks>
+        /// It is not guaranteed that the message is dispatched to the current message dispatcher, if the are other
+        /// message dispatchers with the same local end-point present in the routing system. This method is a shortcut
+        /// for dispatching to the end-point, as retrieved from <see cref="GetLocalEndPointAsync(CancellationToken)"/> 
+        /// and to the same scope as the current message-dispatcher.
+        /// </remarks>
+        async ValueTask<IDispatchResult> DispatchLocalAsync(
+            DispatchDataDictionary dispatchData,
+            bool publish,
+            CancellationToken cancellation = default)
+        {
+            var localEndPoint = await GetLocalEndPointAsync(cancellation).ConfigureAwait(false);
+            var result = await DispatchAsync(
+                dispatchData, publish, new RouteEndPointScope(localEndPoint), cancellation).ConfigureAwait(false);
+
+            return result;
+        }
+
+        /// <summary>
+        /// Asynchronously retrieves the local end-point scope of the message dispatcher.
+        /// </summary>
+        /// <param name="cancellation">
+        /// A <see cref="CancellationToken"/> used to cancel the asynchronous operation,
+        /// or <see cref="CancellationToken.None"/>.
+        /// </param>
+        /// <returns>
+        /// A <see cref="ValueTask{RouteEndPointScope}"/> representing the asynchronous operation.
+        /// When evaluated, the tasks result contains the local end-point scope of the message dispatcher.
+        /// </returns>
+        ValueTask<RouteEndPointScope> GetScopeAsync(CancellationToken cancellation = default);
+
+        /// <summary>
+        /// Asynchronously retrieves the local end-point of the message dispatcher.
+        /// </summary>
+        /// <param name="cancellation">
+        /// A <see cref="CancellationToken"/> used to cancel the asynchronous operation,
+        /// or <see cref="CancellationToken.None"/>.
+        /// </param>
+        /// <returns>
+        /// A <see cref="ValueTask{RouteEndPointAddress}"/> representing the asynchronous operation.
+        /// When evaluated, the tasks result contains the local end-point of the message dispatcher.
+        /// </returns>
+        async ValueTask<RouteEndPointAddress> GetLocalEndPointAsync(CancellationToken cancellation = default)
+        {
+            var scope = await GetScopeAsync(cancellation).ConfigureAwait(false);
+            return scope.EndPointAddress;
+        }
     }
 }

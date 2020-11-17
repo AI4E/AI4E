@@ -28,7 +28,7 @@ using System.Diagnostics;
 namespace AI4E.Messaging.Routing
 {
     /// <summary>
-    /// Represents the address of a logical end point.
+    /// Represents the address of a routable end-point, that is a cluster of route end-point nodes.
     /// </summary>
     [Serializable]
     public readonly struct RouteEndPointAddress : IEquatable<RouteEndPointAddress>, ISerializable
@@ -131,10 +131,10 @@ namespace AI4E.Messaging.Routing
         /// Returns a stringified version of the end point address.
         /// </summary>
         /// <returns>A string representing the current end point address.</returns>
-        public override string? ToString()
+        public override string ToString()
         {
             if (Utf8EncodedValue.IsEmpty)
-                return null;
+                return nameof(UnknownAddress);
 
             return Encoding.UTF8.GetString(Utf8EncodedValue.Span);
         }

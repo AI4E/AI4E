@@ -2,7 +2,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2020 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -20,6 +20,7 @@
 
 
 using System;
+using AI4E.Messaging.Routing;
 
 namespace AI4E.Messaging
 {
@@ -47,6 +48,11 @@ namespace AI4E.Messaging
         /// Gets a boolean value specifying whether the message is dispatched locally.
         /// </summary>
         bool IsLocalDispatch { get; }
+
+        /// <summary>
+        /// Gets the scope of the remote message dispatcher.
+        /// </summary>
+        public RouteEndPointScope RemoteScope { get; }
     }
 
 

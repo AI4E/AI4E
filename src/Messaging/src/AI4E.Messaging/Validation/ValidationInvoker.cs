@@ -2,7 +2,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2020 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -27,6 +27,7 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using AI4E.Messaging.MessageHandlers;
+using AI4E.Messaging.Routing;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace AI4E.Messaging.Validation
@@ -117,6 +118,7 @@ namespace AI4E.Messaging.Validation
             DispatchDataDictionary dispatchData,
             bool publish,
             bool localDispatch,
+            RouteEndPointScope remoteScope,
             IMessageHandlerRegistration handlerRegistration,
             CancellationToken cancellation);
     }
@@ -153,32 +155,22 @@ namespace AI4E.Messaging.Validation
             DispatchDataDictionary dispatchData,
             bool publish,
             bool localDispatch,
+            RouteEndPointScope remoteScope,
             IMessageHandlerRegistration handlerRegistration,
             CancellationToken cancellation)
         {
+            if (handlerRegistration is null)
+                throw new ArgumentNullException(nameof(handlerRegistration));
+
             return InvokeValidationAsync(
-                 dispatchData.As<TMessage>(), publish, localDispatch, handlerRegistration, cancellation);
+                 dispatchData.As<TMessage>(), publish, localDispatch, remoteScope, handlerRegistration, cancellation);
         }
 
-        /// <summary>
-        /// Invokes the validation with the specified parameters.
-        /// </summary>
-        /// <param name="dispatchData">The dispatch data that contains the message to handle and supporting data.</param>
-        /// <param name="publish">A boolean value specifying whether the message is published to all handlers.</param>
-        /// <param name="localDispatch">A boolean value specifying whether the message is dispatched locally.</param>
-        /// <param name="handlerRegistration">The message handler that is responsible for handling the messages in non-validation dispatches.</param>
-        /// <param name="cancellation">A <see cref="CancellationToken"/> used to cancel the asynchronous operation or <see cref="CancellationToken.None"/>.</param>
-        /// <returns>
-        /// A value task representing the asynchronous operation.
-        /// When evaluated, the tasks result contains the dispatch result.
-        /// </returns>
-        /// <exception cref="ArgumentNullException">
-        /// Thrown if either<paramref name="dispatchData"/> or <paramref name="handlerRegistration"/> is null.
-        /// </exception>
-        public ValueTask<IDispatchResult> InvokeValidationAsync(
+        private ValueTask<IDispatchResult> InvokeValidationAsync(
             DispatchDataDictionary<TMessage> dispatchData,
             bool publish,
             bool localDispatch,
+            RouteEndPointScope remoteScope,
             IMessageHandlerRegistration handlerRegistration,
             CancellationToken cancellation)
         {
@@ -206,11 +198,11 @@ namespace AI4E.Messaging.Validation
                     _serviceProvider,
                     cancellation);
 
-                return EvaluateValidationInvokation(invokeResult);
+                return ValidationInvoker<TMessage>.EvaluateValidationInvokationAsync(invokeResult);
             }
 
             return InvokeChainAsync(
-                handler, descriptor, dispatchData, publish, localDispatch, InvokeValidation, cancellation);
+                handler, descriptor, dispatchData, publish, localDispatch, remoteScope, InvokeValidation, cancellation);
         }
 
         /// <inheritdoc/>
@@ -219,10 +211,10 @@ namespace AI4E.Messaging.Validation
             return messageProcessorRegistration.CallOnValidation();
         }
 
-        private async ValueTask<IDispatchResult> EvaluateValidationInvokation(
+        private static async ValueTask<IDispatchResult> EvaluateValidationInvokationAsync(
             ValueTask<IEnumerable<ValidationResult>> invokeResult)
         {
-            var validationResults = await invokeResult;
+            var validationResults = await invokeResult.ConfigureAwait(false);
 
             if (validationResults.Any())
             {

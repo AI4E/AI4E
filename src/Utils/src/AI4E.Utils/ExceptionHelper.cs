@@ -20,6 +20,7 @@
 
 using System;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.Logging;
 
 namespace AI4E.Utils
@@ -51,7 +52,9 @@ namespace AI4E.Utils
             }
         }
 
-        public static T HandleExceptions<T>(Func<T> func, ILogger? logger = null, T defaultValue = default)
+        [return: MaybeNull]
+        [return: NotNullIfNotNull("defaultValue")]
+        public static T HandleExceptions<T>(Func<T> func, ILogger? logger = null, [MaybeNull] T defaultValue = default)
         {
             if (func is null)
                 throw new ArgumentNullException(nameof(func));

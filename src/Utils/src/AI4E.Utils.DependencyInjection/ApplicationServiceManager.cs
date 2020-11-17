@@ -2,7 +2,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2020 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -235,6 +235,30 @@ namespace AI4E.Utils.DependencyInjection
             applicationServiceManager.ApplicationServiceDescriptors.Add(new ApplicationServiceDescriptor(typeof(TService), ServiceInitialization, isRequiredService));
         }
 
+        /// <summary>
+        /// Adds an application service to the manager.
+        /// </summary>
+        /// <typeparam name="TService">The application service type.</typeparam>
+        /// <param name="applicationServiceManager">The application service manager.</param>
+        /// <param name="serviceInitialization">The asynchronous application service initialization. </param>
+        /// <param name="isRequiredService">A boolean value indicating whether the application service is mandatory.</param>
+        public static void AddService<TService>(this ApplicationServiceManager applicationServiceManager,
+                                                Func<TService, Task> serviceInitialization,
+                                                bool isRequiredService = true)
+        {
+            if (applicationServiceManager == null)
+                throw new ArgumentNullException(nameof(applicationServiceManager));
+
+            if (serviceInitialization == null)
+                throw new ArgumentNullException(nameof(serviceInitialization));
+
+            Task ServiceInitialization(object service, IServiceProvider serviceProvider)
+            {
+                return serviceInitialization((TService)service);
+            }
+
+            applicationServiceManager.ApplicationServiceDescriptors.Add(new ApplicationServiceDescriptor(typeof(TService), ServiceInitialization, isRequiredService));
+        }
 
         /// <summary>
         /// Adds an application service to the manager.

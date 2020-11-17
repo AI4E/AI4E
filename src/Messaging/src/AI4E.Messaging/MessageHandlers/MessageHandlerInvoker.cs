@@ -2,7 +2,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2020 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -27,6 +27,7 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
+using AI4E.Messaging.Routing;
 using AI4E.Utils;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -56,7 +57,7 @@ namespace AI4E.Messaging.MessageHandlers
         /// </exception>
         /// <remarks>
         /// This overload creates the message handler specified by <paramref name="memberDescriptor"/>
-        /// and resolves its depdendencies from <paramref name="serviceProvider"/>.
+        /// and resolves its dependencies from <paramref name="serviceProvider"/>.
         /// </remarks>
         public static IMessageHandler CreateInvoker(
             MessageHandlerActionDescriptor memberDescriptor,
@@ -168,8 +169,7 @@ namespace AI4E.Messaging.MessageHandlers
             object handler,
             MessageHandlerActionDescriptor memberDescriptor,
             IEnumerable<IMessageProcessorRegistration> messageProcessors,
-            IServiceProvider serviceProvider)
-            : base(messageProcessors, serviceProvider)
+            IServiceProvider serviceProvider) : base(messageProcessors, serviceProvider)
         {
             if (handler == null)
                 throw new ArgumentNullException(nameof(handler));
@@ -192,24 +192,26 @@ namespace AI4E.Messaging.MessageHandlers
             DispatchDataDictionary<TMessage> dispatchData,
             bool publish,
             bool localDispatch,
+            RouteEndPointScope remoteScope,
             CancellationToken cancellation)
         {
+            if (dispatchData is null)
+                throw new ArgumentNullException(nameof(dispatchData));
+
             ValueTask<IDispatchResult> InvokeCoreAsync(DispatchDataDictionary<TMessage> dispatchDataCore)
             {
-                return InvokeAsync(dispatchDataCore, publish, localDispatch, cancellation);
+                return InvokeAsync(dispatchDataCore, publish, localDispatch, remoteScope, cancellation);
             }
 
             return InvokeChainAsync(
-                _handler, _memberDescriptor, dispatchData, publish, localDispatch, InvokeCoreAsync, cancellation);
-        }
-
-        ValueTask<IDispatchResult> IMessageHandler.HandleAsync(
-            DispatchDataDictionary dispatchData,
-            bool publish,
-            bool localDispatch,
-            CancellationToken cancellation)
-        {
-            return HandleAsync(dispatchData.As<TMessage>(), publish, localDispatch, cancellation);
+                _handler,
+                _memberDescriptor,
+                dispatchData,
+                publish,
+                localDispatch,
+                remoteScope,
+                InvokeCoreAsync,
+                cancellation);
         }
 
         Type IMessageHandler.MessageType => typeof(TMessage);
@@ -220,6 +222,7 @@ namespace AI4E.Messaging.MessageHandlers
             DispatchDataDictionary<TMessage> dispatchData,
             bool publish,
             bool isLocalDispatch,
+            RouteEndPointScope remoteScope,
             CancellationToken cancellation)
         {
             IMessageDispatchContext? context = null;
@@ -227,7 +230,12 @@ namespace AI4E.Messaging.MessageHandlers
 
             IMessageDispatchContext BuildContext()
             {
-                return new MessageDispatchContext(_serviceProvider, dispatchData, publish, isLocalDispatch);
+                return new MessageDispatchContext(
+                    _serviceProvider,
+                    dispatchData,
+                    publish,
+                    isLocalDispatch,
+                    remoteScope);
             }
 
             if (contextDescriptor.CanSetContext)
@@ -285,7 +293,8 @@ namespace AI4E.Messaging.MessageHandlers
 
             try
             {
-                result = await invoker.InvokeAsync(_handler, dispatchData.Message, ResolveParameter);
+                result = await invoker.InvokeAsync(
+                    _handler, dispatchData.Message, ResolveParameter).ConfigureAwait(false);
             }
 #pragma warning disable CA1031
             catch (Exception exc)
@@ -312,7 +321,8 @@ namespace AI4E.Messaging.MessageHandlers
             if (resultType.IsAsyncEnumerable(out var elementType))
             {
                 resultType = typeof(IEnumerable<>).MakeGenericType(elementType);
-                result = await AsyncEnumerableEvaluator.EvaluateAsyncEnumerableAsync(elementType, result, cancellation);
+                result = await AsyncEnumerableEvaluator.EvaluateAsyncEnumerableAsync(
+                    elementType, result, cancellation).ConfigureAwait(false);
             }
 
             return SuccessDispatchResult.FromResult(resultType, result);
@@ -333,10 +343,10 @@ namespace AI4E.Messaging.MessageHandlers
         {
             var result = typeof(AsyncEnumerableEvaluator)
                 .GetMethods(BindingFlags.NonPublic | BindingFlags.Static)
-                .FirstOrDefault(p => p.Name == nameof(EvaluateAsyncEnumerable) && p.IsGenericMethodDefinition)
+                .FirstOrDefault(p => p.Name == nameof(EvaluateAsyncEnumerableAsync) && p.IsGenericMethodDefinition)
                 ?? throw new InvalidOperationException($"Unable to reflect method 'EvaluateAsyncEnumerable`1'.");
 
-            Debug.Assert(result.GetGenericArguments().Count() == 1);
+            Debug.Assert(result.GetGenericArguments().Length == 1);
             Debug.Assert(result.ReturnType == typeof(Task<object>));
 
             return result;
@@ -365,11 +375,11 @@ namespace AI4E.Messaging.MessageHandlers
             return lambda.Compile();
         }
 
-        private static async Task<object> EvaluateAsyncEnumerable<T>(
+        private static async Task<object> EvaluateAsyncEnumerableAsync<T>(
             IAsyncEnumerable<T> asyncEnumerable,
             CancellationToken cancellation)
         {
-            return await asyncEnumerable.ToListAsync(cancellation);
+            return await asyncEnumerable.ToListAsync(cancellation).ConfigureAwait(false);
         }
     }
 }

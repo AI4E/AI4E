@@ -27,7 +27,7 @@ namespace AI4E.Storage.Domain.EndToEndTest
             serviceCollection.AddMessageRecorder<object>();
 
             ServiceProvider = serviceCollection.BuildServiceProvider(validateScopes: true);
-            MessageDispatcher = ServiceProvider.GetRequiredService<IMessageDispatcher>();
+            MessageDispatcher = ServiceProvider.GetRequiredService<IMessagingEngine>().CreateDispatcher();
             MessageRecorder = ServiceProvider.GetRequiredService<MessageRecorder<object>>();
         }
 

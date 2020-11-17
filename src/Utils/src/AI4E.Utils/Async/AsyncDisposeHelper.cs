@@ -165,10 +165,11 @@ namespace AI4E.Utils.Async
         public void Dispose()
         {
             // Volatile read op.
-            if (_disposalCancellationSource == null)
+            if (_disposalCancellationSource is null)
                 return;
 
-            var disposalCancellationSource = Interlocked.Exchange(ref _disposalCancellationSource, null);
+            var disposalCancellationSource = Interlocked.Exchange<CancellationTokenSource?>(
+                ref _disposalCancellationSource, null);
 
             if (disposalCancellationSource != null)
             {

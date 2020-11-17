@@ -79,6 +79,14 @@ namespace AI4E
 
         public event EventHandler? AssemblySourceChanged;
 
+        IAssemblyRegistry IAssemblyRegistry.AddAssembly(
+            Assembly assembly,
+            AssemblyLoadContext? assemblyLoadContext,
+            IServiceProvider? assemblyServiceProvider)
+        {
+            return AddAssembly(assembly, assemblyLoadContext, assemblyServiceProvider);
+        }
+
         /// <summary>
         /// Adds an assembly to the manager.
         /// </summary>
@@ -87,7 +95,7 @@ namespace AI4E
         /// The <see cref="AssemblyLoadContext"/> that <paramref name="assembly"/> was loaded from, or <c>null</c>.
         /// </param>
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="assembly"/> is <c>null</c>.</exception>
-        public void AddAssembly(
+        public AssemblyRegistry AddAssembly(
             Assembly assembly,
             AssemblyLoadContext? assemblyLoadContext = null,
             IServiceProvider? assemblyServiceProvider = null)
@@ -100,7 +108,7 @@ namespace AI4E
             if (Volatile.Read(ref _assemblies).TryGetValue(assembly, out var comparandContext)
                 && comparandContext == context)
             {
-                return;
+                return this;
             }
 
             lock (_mutex)
@@ -110,9 +118,18 @@ namespace AI4E
             }
 
             NotifyAssemblySourceChanged();
+            return this;
         }
 
-        public void AddAssemblies(
+        IAssemblyRegistry IAssemblyRegistry.AddAssemblies(
+            IEnumerable<Assembly> assemblies,
+            AssemblyLoadContext? assemblyLoadContext,
+            IServiceProvider? assemblyServiceProvider)
+        {
+            return AddAssemblies(assemblies, assemblyLoadContext, assemblyServiceProvider);
+        }
+
+        public AssemblyRegistry AddAssemblies(
             IEnumerable<Assembly> assemblies,
             AssemblyLoadContext? assemblyLoadContext = null,
             IServiceProvider? assemblyServiceProvider = null)
@@ -149,7 +166,7 @@ namespace AI4E
 
                 if (!changed)
                 {
-                    return;
+                    return this;
                 }
 
                 current = CompareExchange(start, desired);
@@ -157,6 +174,12 @@ namespace AI4E
             while (current != start);
 
             NotifyAssemblySourceChanged();
+            return this;
+        }
+
+        IAssemblyRegistry IAssemblyRegistry.RemoveAssembly(Assembly assembly)
+        {
+            return RemoveAssembly(assembly);
         }
 
         /// <summary>
@@ -164,13 +187,13 @@ namespace AI4E
         /// </summary>
         /// <param name="assembly">The assembly to remove.</param>
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="assembly"/> is <c>null</c>.</exception>
-        public void RemoveAssembly(Assembly assembly)
+        public AssemblyRegistry RemoveAssembly(Assembly assembly)
         {
             if (assembly == null)
                 throw new ArgumentNullException(nameof(assembly));
 
             if (!Volatile.Read(ref _assemblies).ContainsKey(assembly))
-                return;
+                return this;
 
             lock (_mutex)
             {
@@ -179,9 +202,15 @@ namespace AI4E
             }
 
             NotifyAssemblySourceChanged();
+            return this;
         }
 
-        public void RemoveAssemblies(IEnumerable<Assembly> assemblies)
+        IAssemblyRegistry IAssemblyRegistry.RemoveAssemblies(IEnumerable<Assembly> assemblies)
+        {
+            return RemoveAssemblies(assemblies);
+        }
+
+        public AssemblyRegistry RemoveAssemblies(IEnumerable<Assembly> assemblies)
         {
             if (assemblies == null)
                 throw new ArgumentNullException(nameof(assemblies));
@@ -209,7 +238,7 @@ namespace AI4E
 
                 if (!changed)
                 {
-                    return;
+                    return this;
                 }
 
                 current = CompareExchange(start, desired);
@@ -217,14 +246,20 @@ namespace AI4E
             while (start != current);
 
             NotifyAssemblySourceChanged();
+            return this;
         }
 
-        public void ClearAssemblies()
+        IAssemblyRegistry IAssemblyRegistry.ClearAssemblies()
+        {
+            return ClearAssemblies();
+        }
+
+        public AssemblyRegistry ClearAssemblies()
         {
             var assemblies = Volatile.Read(ref _assemblies);
 
             if (assemblies.Count == 0)
-                return;
+                return this;
 
             lock (_mutex)
             {
@@ -233,6 +268,7 @@ namespace AI4E
             }
 
             NotifyAssemblySourceChanged();
+            return this;
         }
 
         private ImmutableDictionary<Assembly, AssemblyContext> CompareExchange(

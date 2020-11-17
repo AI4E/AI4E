@@ -2,7 +2,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2019 Andreas Truetschel and contributors.
+ * Copyright (c) 2019 - 2020 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -19,6 +19,7 @@
  */
 
 using System;
+using AI4E.Messaging.Routing;
 
 namespace AI4E.Messaging.Mocks
 {
@@ -31,5 +32,7 @@ namespace AI4E.Messaging.Mocks
         public bool IsPublish { get; set; }
 
         public bool IsLocalDispatch { get; set; }
+
+        public RouteEndPointScope RemoteScope { get; set; }
     }
 }

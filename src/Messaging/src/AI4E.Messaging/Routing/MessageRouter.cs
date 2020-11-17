@@ -43,10 +43,11 @@ namespace AI4E.Messaging.Routing
         private readonly AsyncProcess _receiveProcess;
         private readonly AsyncDisposeHelper _disposeHelper;
 
-        public MessageRouter(IRouteMessageHandler routeMessageHandler,
-                             IRouteEndPoint routeEndPoint,
-                             IRouteManager routeManager,
-                             ILogger<MessageRouter>? logger = null)
+        public MessageRouter(
+            IRouteMessageHandler routeMessageHandler,
+            IRouteEndPoint routeEndPoint,
+            IRouteManager routeManager,
+            ILogger<MessageRouter>? logger = null)
         {
             if (routeMessageHandler == null)
                 throw new ArgumentNullException(nameof(routeMessageHandler));
@@ -92,10 +93,7 @@ namespace AI4E.Messaging.Routing
                 .HandleExceptionsAsync(_logger)
                 .ConfigureAwait(false);
 
-            await _routeEndPoint
-                .DisposeAsync()
-                .HandleExceptionsAsync(_logger)
-                .ConfigureAwait(false);
+            _routeEndPoint.Dispose();
 
             await _routeManager
                 .RemoveRoutesAsync(_routeEndPoint.EndPoint, removePersistentRoutes: false)
@@ -106,16 +104,18 @@ namespace AI4E.Messaging.Routing
 
         #region Receive Process
 
+#pragma warning disable VSTHRD200
         private async Task ReceiveProcedure(CancellationToken cancellation)
+#pragma warning restore VSTHRD200
         {
-            var localEndPoint = await GetLocalEndPointAsync(cancellation);
+            var localEndPoint = await GetLocalEndPointAsync(cancellation).ConfigureAwait(false);
 
             while (cancellation.ThrowOrContinue())
             {
                 try
                 {
-                    var receiveResult = await _routeEndPoint.ReceiveAsync(cancellation);
-                    HandleReceiveResult(receiveResult, cancellation).HandleExceptions(_logger);
+                    var receiveResult = await _routeEndPoint.ReceiveAsync(cancellation).ConfigureAwait(false);
+                    HandleReceiveResultAsync(receiveResult, cancellation).HandleExceptions(_logger);
                 }
                 catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { throw; }
 #pragma warning disable CA1031
@@ -129,7 +129,7 @@ namespace AI4E.Messaging.Routing
             }
         }
 
-        private async Task HandleReceiveResult(
+        private async Task HandleReceiveResultAsync(
             IRouteEndPointReceiveResult receiveResult,
             CancellationToken cancellation)
         {
@@ -138,30 +138,40 @@ namespace AI4E.Messaging.Routing
 
             try
             {
-                var routeResult = await HandleAsync(receiveResult.Message, combinedCancellationSource.Token);
+                var routeResult = await HandleAsync(
+                    receiveResult.Message, combinedCancellationSource.Token).ConfigureAwait(false);
 
                 if (routeResult.RouteMessage == default)
                 {
-                    await receiveResult.SendAckAsync();
+                    await receiveResult.SendAckAsync().ConfigureAwait(false);
                 }
                 else
                 {
-                    await receiveResult.SendResultAsync(routeResult);
+                    await receiveResult.SendResultAsync(routeResult).ConfigureAwait(false);
                 }
             }
             catch (OperationCanceledException) when (receiveResult.Cancellation.IsCancellationRequested)
             {
-                await receiveResult.SendCancellationAsync();
+                await receiveResult.SendCancellationAsync().ConfigureAwait(false);
             }
         }
 
         private async Task<RouteMessageHandleResult> HandleAsync(Message message, CancellationToken cancellation)
         {
-            var localEndPoint = await GetLocalEndPointAsync(cancellation);
-            var (publish, localDispatch, route) = DecodeMessage(ref message);
+            var localEndPoint = await GetLocalEndPointAsync(cancellation).ConfigureAwait(false);
+            var (publish, localDispatch, remoteScope, localScope, route) = DecodeMessage(ref message);
+
+            Debug.Assert(localEndPoint == localScope.EndPointAddress);
 
             _logger?.LogDebug($"End-point '{localEndPoint}': Processing request message.");
-            return await RouteToLocalAsync(route, new RouteMessage<DispatchDataDictionary>(message), publish, localDispatch, cancellation);
+            return await RouteToLocalAsync(
+                route,
+                new RouteMessage<DispatchDataDictionary>(message),
+                publish,
+                localDispatch,
+                remoteScope,
+                localScope,
+                cancellation).ConfigureAwait(false);
         }
 
         #endregion
@@ -171,27 +181,44 @@ namespace AI4E.Messaging.Routing
             RouteMessage<DispatchDataDictionary> routeMessage,
             bool publish,
             bool localDispatch,
+            RouteEndPointScope remoteScope,
+            RouteEndPointScope localScope,
             CancellationToken cancellation)
         {
             return _routeMessageHandler.HandleAsync(
-                routeMessage, route, publish, localDispatch, cancellation);
+                routeMessage, route, publish, localDispatch, remoteScope, localScope, cancellation);
         }
 
         public async ValueTask<RouteMessage<IDispatchResult>> RouteAsync(
             Route route,
             RouteMessage<DispatchDataDictionary> routeMessage,
             bool publish,
-            RouteEndPointAddress endPoint,
+            RouteEndPointScope remoteScope,
+            RouteEndPointScope localScope,
             CancellationToken cancellation)
         {
-            if (endPoint == default)
-                throw new ArgumentDefaultException(nameof(endPoint));
+            if (remoteScope == default)
+                throw new ArgumentDefaultException(nameof(remoteScope));
+
+            if (localScope == RouteEndPointScope.NoScope)
+            {
+                var localEndPointAddress = await GetLocalEndPointAsync(cancellation).ConfigureAwait(false);
+                localScope = new RouteEndPointScope(localEndPointAddress);
+            }
 
             try
             {
-                using var guard = await _disposeHelper.GuardDisposalAsync(cancellation);
-                var routeResult = await InternalRouteAsync(route, routeMessage, publish, endPoint, cancellation);
+                using var guard = await _disposeHelper.GuardDisposalAsync(cancellation).ConfigureAwait(false);
+                var routeResult = await InternalRouteAsync(
+                    route,
+                    routeMessage,
+                    publish,
+                    remoteScope,
+                    localScope,
+                    cancellation).ConfigureAwait(false);
+
                 // TODO: Why do we ignore routeResult.Handled here?
+
                 return routeResult.RouteMessage;
             }
             catch (OperationCanceledException) when (_disposeHelper.IsDisposed)
@@ -204,8 +231,15 @@ namespace AI4E.Messaging.Routing
             RouteHierarchy routes,
             RouteMessage<DispatchDataDictionary> routeMessage,
             bool publish,
+            RouteEndPointScope localScope,
             CancellationToken cancellation)
         {
+            if (localScope == RouteEndPointScope.NoScope)
+            {
+                var localEndPointAddress = await GetLocalEndPointAsync(cancellation).ConfigureAwait(false);
+                localScope = new RouteEndPointScope(localEndPointAddress);
+            }
+
             if (!routes.Any())
             {
                 return Array.Empty<RouteMessage<IDispatchResult>>();
@@ -213,8 +247,9 @@ namespace AI4E.Messaging.Routing
 
             try
             {
-                using var guard = await _disposeHelper.GuardDisposalAsync(cancellation);
-                return await InternalRouteAsync(routes, routeMessage, publish, cancellation);
+                using var guard = await _disposeHelper.GuardDisposalAsync(cancellation).ConfigureAwait(false);
+                return await InternalRouteAsync(
+                    routes, routeMessage, publish, localScope, cancellation).ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (_disposeHelper.IsDisposed)
             {
@@ -226,9 +261,10 @@ namespace AI4E.Messaging.Routing
             RouteHierarchy routes,
             RouteMessage<DispatchDataDictionary> routeMessage,
             bool publish,
+            RouteEndPointScope localScope,
             CancellationToken cancellation)
         {
-            var localEndPoint = await GetLocalEndPointAsync(cancellation);
+            //var localEndPoint = await GetLocalEndPointAsync(cancellation).ConfigureAwait(false);
             List<ValueTask<RouteMessageHandleResult>>? tasks = null;
             var handledEndPoints = new HashSet<RouteEndPointAddress>();
             RouteMessage<IDispatchResult>? lastNonSuccessful = default;
@@ -237,13 +273,14 @@ namespace AI4E.Messaging.Routing
 
             foreach (var route in routes)
             {
-                var matches = await MatchRouteAsync(route, publish, handledEndPoints, cancellation);
+                var matches = await MatchRouteAsync(
+                    route, publish, handledEndPoints, cancellation).ConfigureAwait(false);
 
                 if (matches.Any())
                 {
                     if (!publish)
                     {
-                        _logger?.LogTrace($"Found {matches.Count()} matches for route '{route}'.");
+                        _logger?.LogTrace($"Found {matches.Count} matches for route '{route}'.");
 
                         for (var i = matches.Count - 1; i >= 0; i--)
                         {
@@ -261,7 +298,12 @@ namespace AI4E.Messaging.Routing
                             }
 
                             var routeResult = await InternalRouteAsync(
-                                route, routeMessage, publish: false, endPoint, cancellation);
+                                route,
+                                routeMessage,
+                                publish: false,
+                                remoteScope: new RouteEndPointScope(endPoint),
+                                localScope,
+                                cancellation).ConfigureAwait(false);
 
                             if (routeResult.Handled)
                             {
@@ -276,14 +318,19 @@ namespace AI4E.Messaging.Routing
                     else
                     {
                         _logger?.LogTrace(
-                            $"Found {matches.Count()} matches (considering handled end-points) for route '{route}'.");
+                            $"Found {matches.Count} matches (considering handled end-points) for route '{route}'.");
 
                         var endPoints = matches.Select(p => p.EndPoint);
                         handledEndPoints.UnionWith(endPoints);
 
                         tasks ??= new List<ValueTask<RouteMessageHandleResult>>();
                         tasks.AddRange(endPoints.Select(endPoint => InternalRouteAsync(
-                            route, routeMessage, publish: true, endPoint, cancellation)));
+                            route,
+                            routeMessage,
+                            publish: true,
+                            remoteScope: new RouteEndPointScope(endPoint),
+                            localScope,
+                            cancellation)));
                     }
                 }
             }
@@ -298,7 +345,7 @@ namespace AI4E.Messaging.Routing
                 return ImmutableList<RouteMessage<IDispatchResult>>.Empty;
             }
 
-            var result = await tasks.WhenAll(preserveOrder: false);
+            var result = await tasks.WhenAll(preserveOrder: false).ConfigureAwait(false);
 
             _logger?.LogTrace($"Successfully routed a message ({(publish ? "publish" : "p2p")}) with routes: {routes}");
 
@@ -318,8 +365,10 @@ namespace AI4E.Messaging.Routing
                 routeResults = routeResults.Where(p => !handledEndPoints.Contains(p.EndPoint));
             }
 
-            var localEndPoint = await GetLocalEndPointAsync(cancellation);
-            routeResults = routeResults.Where(p => localEndPoint == p.EndPoint || !p.RegistrationOptions.IncludesFlag(RouteRegistrationOptions.LocalDispatchOnly));
+            var localEndPoint = await GetLocalEndPointAsync(cancellation).ConfigureAwait(false);
+            routeResults = routeResults.Where(
+                p => localEndPoint == p.EndPoint
+                    || !p.RegistrationOptions.IncludesFlag(RouteRegistrationOptions.LocalDispatchOnly));
             return routeResults.ToList();
         }
 
@@ -327,40 +376,57 @@ namespace AI4E.Messaging.Routing
             Route route,
             RouteMessage<DispatchDataDictionary> routeMessage,
             bool publish,
-            RouteEndPointAddress endPoint,
+            RouteEndPointScope remoteScope,
+            RouteEndPointScope localScope,
             CancellationToken cancellation)
         {
-            Debug.Assert(endPoint != default);
-
-            var localEndPoint = await GetLocalEndPointAsync(cancellation);
+            // The scopes are compatible if they are the same so sourceScope == targetScope or if no target scope 
+            // was specified.
 
             // This does short-circuit the dispatch to the remote end-point. 
             // Any possible replicates do not get any chance to receive the message. 
             // => Requests are kept local.
-            if (endPoint == localEndPoint)
+            if (localScope.CanBeRoutedTo(remoteScope))
             {
                 _logger?.LogDebug(
-                    $"Message router for end-point '{localEndPoint}': Dispatching request message locally.");
+                    $"Message router for end-point '{localScope.EndPointAddress}': Dispatching request message locally.");
 
-                return await RouteToLocalAsync(route, routeMessage, publish, localDispatch: true, cancellation);
+                return await RouteToLocalAsync(
+                    route,
+                    routeMessage,
+                    publish,
+                    localDispatch: true,
+                    localScope, // Reverse local and remote scope order, as we are calling the receiver now.
+                    remoteScope,
+                    cancellation).ConfigureAwait(false);
             }
 
             _logger?.LogDebug(
-                $"Message router for end-point '{localEndPoint}': " +
-                $"Dispatching request message to remote end point '{endPoint}'.");
+                $"Message router for end-point '{localScope.EndPointAddress}': " +
+                $"Dispatching request message to remote end point '{remoteScope.EndPointAddress}'.");
 
             var message = routeMessage.Message;
-            EncodeMessage(ref message, publish, localDispatch: false, route);
+            EncodeMessage(ref message, publish, localDispatch: false, remoteScope, localScope, route);
 
-            var result = await _routeEndPoint.SendAsync(message, endPoint, cancellation);
+            var result = await _routeEndPoint.SendAsync(
+                message,
+                remoteScope.EndPointAddress,
+                remoteScope.ClusterNodeIdentifier,
+                cancellation).ConfigureAwait(false);
 
             _logger?.LogDebug(
-                $"Message router for end-point '{localEndPoint}': Processing response message."); // TODO
+                $"Message router for end-point '{localScope.EndPointAddress}': Processing response message."); // TODO
 
             return result;
         }
 
-        private static void EncodeMessage(ref Message message, bool publish, bool localDispatch, in Route route)
+        private static void EncodeMessage(
+            ref Message message,
+            bool publish,
+            bool localDispatch,
+            RouteEndPointScope remoteScope,
+            RouteEndPointScope localScope,
+            in Route route)
         {
             var frameBuilder = new MessageFrameBuilder();
 
@@ -369,13 +435,15 @@ namespace AI4E.Messaging.Routing
             {
                 writer.Write(publish);
                 writer.Write(localDispatch);
+                RouteEndPointScope.Write(writer, remoteScope);
+                RouteEndPointScope.Write(writer, localScope);
                 Route.Write(writer, route);
             }
 
             message = message.PushFrame(frameBuilder.BuildMessageFrame());
         }
 
-        private static (bool publish, bool localDispatch, Route route) DecodeMessage(ref Message message)
+        private static (bool publish, bool localDispatch, RouteEndPointScope remoteScope, RouteEndPointScope localScope, Route route) DecodeMessage(ref Message message)
         {
             message = message.PopFrame(out var frame);
 
@@ -383,18 +451,23 @@ namespace AI4E.Messaging.Routing
             using var reader = new BinaryReader(frameStream);
             var publish = reader.ReadBoolean();
             var localDispatch = reader.ReadBoolean();
+
+            // In EncodeMessage we first write remoteScope, then localScope
+            // We now have the reversed order, as we are the receiver now.
+            RouteEndPointScope.Read(reader, out var localScope);
+            RouteEndPointScope.Read(reader, out var remoteScope);
             Route.Read(reader, out var route);
 
-            return (publish, localDispatch, route);
+            return (publish, localDispatch, remoteScope, localScope, route);
         }
 
         public async Task RegisterRouteAsync(RouteRegistration routeRegistration, CancellationToken cancellation)
         {
             try
             {
-                using var guard = await _disposeHelper.GuardDisposalAsync(cancellation);
-                var localEndPoint = await GetLocalEndPointAsync(cancellation);
-                await _routeManager.AddRouteAsync(localEndPoint, routeRegistration, cancellation);
+                using var guard = await _disposeHelper.GuardDisposalAsync(cancellation).ConfigureAwait(false);
+                var localEndPoint = await GetLocalEndPointAsync(cancellation).ConfigureAwait(false);
+                await _routeManager.AddRouteAsync(localEndPoint, routeRegistration, cancellation).ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (_disposeHelper.IsDisposed)
             {
@@ -406,9 +479,9 @@ namespace AI4E.Messaging.Routing
         {
             try
             {
-                using var guard = await _disposeHelper.GuardDisposalAsync(cancellation);
-                var localEndPoint = await GetLocalEndPointAsync(cancellation);
-                await _routeManager.RemoveRouteAsync(localEndPoint, route, cancellation);
+                using var guard = await _disposeHelper.GuardDisposalAsync(cancellation).ConfigureAwait(false);
+                var localEndPoint = await GetLocalEndPointAsync(cancellation).ConfigureAwait(false);
+                await _routeManager.RemoveRouteAsync(localEndPoint, route, cancellation).ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (_disposeHelper.IsDisposed)
             {
@@ -420,13 +493,28 @@ namespace AI4E.Messaging.Routing
         {
             try
             {
-                using var guard = await _disposeHelper.GuardDisposalAsync(cancellation);
-                await _routeManager.RemoveRoutesAsync(_routeEndPoint.EndPoint, removePersistentRoutes, cancellation);
+                using var guard = await _disposeHelper.GuardDisposalAsync(cancellation).ConfigureAwait(false);
+                await _routeManager.RemoveRoutesAsync(
+                    _routeEndPoint.EndPoint, removePersistentRoutes, cancellation).ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (_disposeHelper.IsDisposed)
             {
                 throw new ObjectDisposedException(GetType().FullName);
             }
+        }
+
+        private long _nextScopeSeqNum;
+
+        public RouteEndPointScope CreateScope()
+        {
+            var seqNum = Interlocked.Increment(ref _nextScopeSeqNum);
+            return new RouteEndPointScope(_routeEndPoint.EndPoint, _routeEndPoint.ClusterNodeIdentifier, seqNum);
+        }
+
+        public bool OwnsScope(RouteEndPointScope scope)
+        {
+            return scope.EndPointAddress == _routeEndPoint.EndPoint
+                && scope.ClusterNodeIdentifier == _routeEndPoint.ClusterNodeIdentifier;
         }
     }
 }

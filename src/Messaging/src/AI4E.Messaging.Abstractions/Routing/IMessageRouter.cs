@@ -2,7 +2,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2020 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -34,18 +34,24 @@ namespace AI4E.Messaging.Routing
             RouteHierarchy routes,
             RouteMessage<DispatchDataDictionary> routeMessage,
             bool publish,
+            RouteEndPointScope localScope,
             CancellationToken cancellation = default);
 
         ValueTask<RouteMessage<IDispatchResult>> RouteAsync(
             Route route,
             RouteMessage<DispatchDataDictionary> routeMessage,
             bool publish,
-            RouteEndPointAddress endPoint,
+            RouteEndPointScope remoteScope,
+            RouteEndPointScope localScope,
             CancellationToken cancellation = default);
 
         Task RegisterRouteAsync(RouteRegistration routeRegistration, CancellationToken cancellation = default);
         Task UnregisterRouteAsync(Route route, CancellationToken cancellation = default);
         Task UnregisterRoutesAsync(bool removePersistentRoutes, CancellationToken cancellation = default);
+
+        RouteEndPointScope CreateScope();
+
+        bool OwnsScope(RouteEndPointScope scope);
     }
 
     public static class MessageRouterExtensions

@@ -1,3 +1,23 @@
+/* License
+ * --------------------------------------------------------------------------------------------------------------------
+ * This file is part of the AI4E distribution.
+ *   (https://github.com/AI4E/AI4E)
+ * Copyright (c) 2018 - 2020 Andreas Truetschel and contributors.
+ * 
+ * AI4E is free software: you can redistribute it and/or modify  
+ * it under the terms of the GNU Lesser General Public License as   
+ * published by the Free Software Foundation, version 3.
+ *
+ * AI4E is distributed in the hope that it will be useful, but 
+ * WITHOUT ANY WARRANTY; without even the implied warranty of 
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU 
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ * --------------------------------------------------------------------------------------------------------------------
+ */
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -24,7 +44,7 @@ namespace AI4E.Messaging.Validation
                 typeof(ValidationTestMessageHandler).GetMethod("Handle"));
             var validationProcessor = new ValidationMessageProcessor(BuildServiceProvider())
             {
-                Context = new MessageProcessorContext(messageHandler, memberDescriptor, publish: false, isLocalDispatch: false)
+                Context = new MessageProcessorContext(messageHandler, memberDescriptor, publish: false, isLocalDispatch: false, remoteScope: default)
             };
 
             var dispatchResult = await validationProcessor.ProcessAsync(
@@ -51,7 +71,7 @@ namespace AI4E.Messaging.Validation
                 typeof(ValidationTestMessageHandler).GetMethod("Handle"));
             var validationProcessor = new ValidationMessageProcessor(BuildServiceProvider())
             {
-                Context = new MessageProcessorContext(messageHandler, memberDescriptor, publish: false, isLocalDispatch: false)
+                Context = new MessageProcessorContext(messageHandler, memberDescriptor, publish: false, isLocalDispatch: false, remoteScope: default)
             };
 
             var dispatchResult = await validationProcessor.ProcessAsync(
@@ -83,7 +103,7 @@ namespace AI4E.Messaging.Validation
                 typeof(NoValidationTestMessageHandler).GetMethod("Handle"));
             var validationProcessor = new ValidationMessageProcessor(BuildServiceProvider())
             {
-                Context = new MessageProcessorContext(messageHandler, memberDescriptor, publish: false, isLocalDispatch: false)
+                Context = new MessageProcessorContext(messageHandler, memberDescriptor, publish: false, isLocalDispatch: false, remoteScope: default)
             };
 
             var dispatchResult = await validationProcessor.ProcessAsync(
@@ -109,7 +129,7 @@ namespace AI4E.Messaging.Validation
                 typeof(ExplicitValidationResultsBuilderMessageHandler).GetMethod("Handle"));
             var validationProcessor = new ValidationMessageProcessor(BuildServiceProvider())
             {
-                Context = new MessageProcessorContext(messageHandler, memberDescriptor, publish: false, isLocalDispatch: false)
+                Context = new MessageProcessorContext(messageHandler, memberDescriptor, publish: false, isLocalDispatch: false, remoteScope: default)
             };
 
             var dispatchResult = await validationProcessor.ProcessAsync(
@@ -141,7 +161,7 @@ namespace AI4E.Messaging.Validation
                 typeof(ValidationTestMessageHandler).GetMethod("Handle"));
             var validationProcessor = new ValidationMessageProcessor(BuildServiceProvider())
             {
-                Context = new MessageProcessorContext(messageHandler, memberDescriptor, publish: false, isLocalDispatch: false)
+                Context = new MessageProcessorContext(messageHandler, memberDescriptor, publish: false, isLocalDispatch: false, remoteScope: default)
             };
 
             var dispatchResult = await validationProcessor.ProcessAsync(
@@ -168,7 +188,7 @@ namespace AI4E.Messaging.Validation
                 typeof(DerivedValidationTestMessageHandler).GetMethod("Handle"));
             var validationProcessor = new ValidationMessageProcessor(BuildServiceProvider())
             {
-                Context = new MessageProcessorContext(messageHandler, memberDescriptor, publish: false, isLocalDispatch: false)
+                Context = new MessageProcessorContext(messageHandler, memberDescriptor, publish: false, isLocalDispatch: false, remoteScope: default)
             };
 
             var dispatchResult = await validationProcessor.ProcessAsync(
@@ -195,7 +215,7 @@ namespace AI4E.Messaging.Validation
                 typeof(ValidationTestMessageHandler).GetMethod("Handle"));
             var validationProcessor = new ValidationMessageProcessor(BuildServiceProvider())
             {
-                Context = new MessageProcessorContext(messageHandler, memberDescriptor, publish: false, isLocalDispatch: false)
+                Context = new MessageProcessorContext(messageHandler, memberDescriptor, publish: false, isLocalDispatch: false, remoteScope: default)
             };
 
             var dispatchResult = await validationProcessor.ProcessAsync(
@@ -227,7 +247,7 @@ namespace AI4E.Messaging.Validation
                 typeof(DerivedValidationTestMessageHandler).GetMethod("Handle"));
             var validationProcessor = new ValidationMessageProcessor(BuildServiceProvider())
             {
-                Context = new MessageProcessorContext(messageHandler, memberDescriptor, publish: false, isLocalDispatch: false)
+                Context = new MessageProcessorContext(messageHandler, memberDescriptor, publish: false, isLocalDispatch: false, remoteScope: default)
             };
 
             var dispatchResult = await validationProcessor.ProcessAsync(
@@ -259,7 +279,7 @@ namespace AI4E.Messaging.Validation
                 typeof(MissingValidationTestMessageHandler).GetMethod("Handle"));
             var validationProcessor = new ValidationMessageProcessor(BuildServiceProvider())
             {
-                Context = new MessageProcessorContext(messageHandler, memberDescriptor, publish: false, isLocalDispatch: false)
+                Context = new MessageProcessorContext(messageHandler, memberDescriptor, publish: false, isLocalDispatch: false, remoteScope: default)
             };
 
 
@@ -286,7 +306,7 @@ namespace AI4E.Messaging.Validation
                 typeof(AmbiguousValidationTestMessageHandler).GetMethod("Handle"));
             var validationProcessor = new ValidationMessageProcessor(BuildServiceProvider())
             {
-                Context = new MessageProcessorContext(messageHandler, memberDescriptor, publish: false, isLocalDispatch: false)
+                Context = new MessageProcessorContext(messageHandler, memberDescriptor, publish: false, isLocalDispatch: false, remoteScope: default)
             };
 
             await Assert.ThrowsExceptionAsync<InvalidOperationException>(async () =>
@@ -310,7 +330,7 @@ namespace AI4E.Messaging.Validation
                 typeof(AsyncValidationTestMessageHandler).GetMethod("Handle"));
             var validationProcessor = new ValidationMessageProcessor(BuildServiceProvider())
             {
-                Context = new MessageProcessorContext(messageHandler, memberDescriptor, publish: false, isLocalDispatch: false)
+                Context = new MessageProcessorContext(messageHandler, memberDescriptor, publish: false, isLocalDispatch: false, remoteScope: default)
             };
 
             var dispatchResult = await validationProcessor.ProcessAsync(
@@ -337,7 +357,7 @@ namespace AI4E.Messaging.Validation
                 typeof(AsyncValidationTestMessageHandler).GetMethod("Handle"));
             var validationProcessor = new ValidationMessageProcessor(BuildServiceProvider())
             {
-                Context = new MessageProcessorContext(messageHandler, memberDescriptor, publish: false, isLocalDispatch: false)
+                Context = new MessageProcessorContext(messageHandler, memberDescriptor, publish: false, isLocalDispatch: false, remoteScope: default)
             };
 
             var dispatchResult = await validationProcessor.ProcessAsync(
@@ -369,7 +389,7 @@ namespace AI4E.Messaging.Validation
                 typeof(AsyncExplicitValidationResultsBuilderMessageHandler).GetMethod("Handle"));
             var validationProcessor = new ValidationMessageProcessor(BuildServiceProvider())
             {
-                Context = new MessageProcessorContext(messageHandler, memberDescriptor, publish: false, isLocalDispatch: false)
+                Context = new MessageProcessorContext(messageHandler, memberDescriptor, publish: false, isLocalDispatch: false, remoteScope: default)
             };
 
             var dispatchResult = await validationProcessor.ProcessAsync(
@@ -402,7 +422,7 @@ namespace AI4E.Messaging.Validation
             var serviceProvider = BuildServiceProvider(services => services.AddSingleton<IService, Service>());
             var validationProcessor = new ValidationMessageProcessor(serviceProvider)
             {
-                Context = new MessageProcessorContext(messageHandler, memberDescriptor, publish: false, isLocalDispatch: false)
+                Context = new MessageProcessorContext(messageHandler, memberDescriptor, publish: false, isLocalDispatch: false, remoteScope: default)
             };
 
             using var cancellationTokenSource = new CancellationTokenSource();
@@ -434,7 +454,7 @@ namespace AI4E.Messaging.Validation
             var serviceProvider = BuildServiceProvider();
             var validationProcessor = new ValidationMessageProcessor(serviceProvider)
             {
-                Context = new MessageProcessorContext(messageHandler, memberDescriptor, publish: false, isLocalDispatch: false)
+                Context = new MessageProcessorContext(messageHandler, memberDescriptor, publish: false, isLocalDispatch: false, remoteScope: default)
             };
 
             using var cancellationTokenSource = new CancellationTokenSource();
@@ -461,7 +481,7 @@ namespace AI4E.Messaging.Validation
             var serviceProvider = BuildServiceProvider();
             var validationProcessor = new ValidationMessageProcessor(serviceProvider)
             {
-                Context = new MessageProcessorContext(messageHandler, memberDescriptor, publish: false, isLocalDispatch: false)
+                Context = new MessageProcessorContext(messageHandler, memberDescriptor, publish: false, isLocalDispatch: false, remoteScope: default)
             };
 
             using var cancellationTokenSource = new CancellationTokenSource();
@@ -488,7 +508,7 @@ namespace AI4E.Messaging.Validation
                 typeof(CombineValidationTestMessageHandler).GetMethod("Handle"));
             var validationProcessor = new ValidationMessageProcessor(BuildServiceProvider())
             {
-                Context = new MessageProcessorContext(messageHandler, memberDescriptor, publish: false, isLocalDispatch: false)
+                Context = new MessageProcessorContext(messageHandler, memberDescriptor, publish: false, isLocalDispatch: false, remoteScope: default)
             };
 
             var dispatchResult = await validationProcessor.ProcessAsync(
@@ -520,7 +540,7 @@ namespace AI4E.Messaging.Validation
                 typeof(CombineValidationTestMessageHandler).GetMethod("Handle"));
             var validationProcessor = new ValidationMessageProcessor(BuildServiceProvider())
             {
-                Context = new MessageProcessorContext(messageHandler, memberDescriptor, publish: false, isLocalDispatch: false)
+                Context = new MessageProcessorContext(messageHandler, memberDescriptor, publish: false, isLocalDispatch: false, remoteScope: default)
             };
 
             var dispatchResult = await validationProcessor.ProcessAsync(
@@ -552,7 +572,7 @@ namespace AI4E.Messaging.Validation
                 typeof(SingleResultCombineValidationTestMessageHandler).GetMethod("Handle"));
             var validationProcessor = new ValidationMessageProcessor(BuildServiceProvider())
             {
-                Context = new MessageProcessorContext(messageHandler, memberDescriptor, publish: false, isLocalDispatch: false)
+                Context = new MessageProcessorContext(messageHandler, memberDescriptor, publish: false, isLocalDispatch: false, remoteScope: default)
             };
 
             var dispatchResult = await validationProcessor.ProcessAsync(
@@ -584,7 +604,7 @@ namespace AI4E.Messaging.Validation
                 typeof(SingleResultCombineValidationTestMessageHandler).GetMethod("Handle"));
             var validationProcessor = new ValidationMessageProcessor(BuildServiceProvider())
             {
-                Context = new MessageProcessorContext(messageHandler, memberDescriptor, publish: false, isLocalDispatch: false)
+                Context = new MessageProcessorContext(messageHandler, memberDescriptor, publish: false, isLocalDispatch: false, remoteScope: default)
             };
 
             var dispatchResult = await validationProcessor.ProcessAsync(
@@ -616,7 +636,7 @@ namespace AI4E.Messaging.Validation
                 typeof(SingleResultValidationTestMessageHandler).GetMethod("Handle"));
             var validationProcessor = new ValidationMessageProcessor(BuildServiceProvider())
             {
-                Context = new MessageProcessorContext(messageHandler, memberDescriptor, publish: false, isLocalDispatch: false)
+                Context = new MessageProcessorContext(messageHandler, memberDescriptor, publish: false, isLocalDispatch: false, remoteScope: default)
             };
 
             var dispatchResult = await validationProcessor.ProcessAsync(
@@ -643,7 +663,7 @@ namespace AI4E.Messaging.Validation
                 typeof(SingleResultValidationTestMessageHandler).GetMethod("Handle"));
             var validationProcessor = new ValidationMessageProcessor(BuildServiceProvider())
             {
-                Context = new MessageProcessorContext(messageHandler, memberDescriptor, publish: false, isLocalDispatch: false)
+                Context = new MessageProcessorContext(messageHandler, memberDescriptor, publish: false, isLocalDispatch: false, remoteScope: default)
             };
 
             var dispatchResult = await validationProcessor.ProcessAsync(
@@ -674,7 +694,7 @@ namespace AI4E.Messaging.Validation
                 typeof(BuilderResultValidationTestMessageHandler).GetMethod("Handle"));
             var validationProcessor = new ValidationMessageProcessor(BuildServiceProvider())
             {
-                Context = new MessageProcessorContext(messageHandler, memberDescriptor, publish: false, isLocalDispatch: false)
+                Context = new MessageProcessorContext(messageHandler, memberDescriptor, publish: false, isLocalDispatch: false, remoteScope: default)
             };
 
             var dispatchResult = await validationProcessor.ProcessAsync(
@@ -701,7 +721,7 @@ namespace AI4E.Messaging.Validation
                 typeof(BuilderResultValidationTestMessageHandler).GetMethod("Handle"));
             var validationProcessor = new ValidationMessageProcessor(BuildServiceProvider())
             {
-                Context = new MessageProcessorContext(messageHandler, memberDescriptor, publish: false, isLocalDispatch: false)
+                Context = new MessageProcessorContext(messageHandler, memberDescriptor, publish: false, isLocalDispatch: false, remoteScope: default)
             };
 
             var dispatchResult = await validationProcessor.ProcessAsync(
@@ -733,7 +753,7 @@ namespace AI4E.Messaging.Validation
                 typeof(CombineBuilderResultValidationTestMessageHandler).GetMethod("Handle"));
             var validationProcessor = new ValidationMessageProcessor(BuildServiceProvider())
             {
-                Context = new MessageProcessorContext(messageHandler, memberDescriptor, publish: false, isLocalDispatch: false)
+                Context = new MessageProcessorContext(messageHandler, memberDescriptor, publish: false, isLocalDispatch: false, remoteScope: default)
             };
 
             var dispatchResult = await validationProcessor.ProcessAsync(
@@ -765,7 +785,7 @@ namespace AI4E.Messaging.Validation
                 typeof(CombineBuilderResultValidationTestMessageHandler).GetMethod("Handle"));
             var validationProcessor = new ValidationMessageProcessor(BuildServiceProvider())
             {
-                Context = new MessageProcessorContext(messageHandler, memberDescriptor, publish: false, isLocalDispatch: false)
+                Context = new MessageProcessorContext(messageHandler, memberDescriptor, publish: false, isLocalDispatch: false, remoteScope: default)
             };
 
             var dispatchResult = await validationProcessor.ProcessAsync(
@@ -797,7 +817,7 @@ namespace AI4E.Messaging.Validation
                 typeof(CombineBuilderResultValidationTestMessageHandler).GetMethod("Handle"));
             var validationProcessor = new ValidationMessageProcessor(BuildServiceProvider())
             {
-                Context = new MessageProcessorContext(messageHandler, memberDescriptor, publish: false, isLocalDispatch: false)
+                Context = new MessageProcessorContext(messageHandler, memberDescriptor, publish: false, isLocalDispatch: false, remoteScope: default)
             };
 
             var dispatchResult = await validationProcessor.ProcessAsync(

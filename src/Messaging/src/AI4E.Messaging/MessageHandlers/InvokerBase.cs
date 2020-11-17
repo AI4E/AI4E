@@ -2,7 +2,7 @@
  * --------------------------------------------------------------------------------------------------------------------
  * This file is part of the AI4E distribution.
  *   (https://github.com/AI4E/AI4E)
- * Copyright (c) 2018 - 2019 Andreas Truetschel and contributors.
+ * Copyright (c) 2018 - 2020 Andreas Truetschel and contributors.
  * 
  * AI4E is free software: you can redistribute it and/or modify  
  * it under the terms of the GNU Lesser General Public License as   
@@ -24,6 +24,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using AI4E.Messaging.Routing;
 
 namespace AI4E.Messaging.MessageHandlers
 {
@@ -88,9 +89,13 @@ namespace AI4E.Messaging.MessageHandlers
             DispatchDataDictionary<TMessage> dispatchData,
             bool publish,
             bool localDispatch,
+            RouteEndPointScope remoteScope,
             Func<DispatchDataDictionary<TMessage>, ValueTask<IDispatchResult>> invokeCore,
             CancellationToken cancellation)
         {
+            if (invokeCore is null)
+                throw new ArgumentNullException(nameof(invokeCore));
+
             var next = invokeCore;
 
             for (var i = _messageProcessors.Count - 1; i >= 0; i--)
@@ -110,7 +115,8 @@ namespace AI4E.Messaging.MessageHandlers
 
                     if (contextDescriptor.CanSetContext)
                     {
-                        IMessageProcessorContext messageProcessorContext = new MessageProcessorContext(handler, memberDescriptor, publish, localDispatch);
+                        IMessageProcessorContext messageProcessorContext = new MessageProcessorContext(
+                            handler, memberDescriptor, publish, localDispatch, remoteScope);
 
                         contextDescriptor.SetContext(processor, messageProcessorContext);
                     }
