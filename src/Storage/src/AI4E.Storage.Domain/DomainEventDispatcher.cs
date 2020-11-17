@@ -34,7 +34,9 @@ namespace AI4E.Storage.Domain
     /// <inheritdoc cref="IDomainEventDispatcher"/>
     public sealed class DomainEventDispatcher : IDomainEventDispatcher
     {
+#pragma warning disable CA2213
         private readonly IMessageDispatcher _messageDispatcher;
+#pragma warning restore CA2213
         private readonly IDateTimeProvider _dateTimeProvider;
         private readonly IOptions<DomainStorageOptions> _optionsAccessor;
         private readonly ILogger<DomainEventDispatcher> _logger;
@@ -56,13 +58,13 @@ namespace AI4E.Storage.Domain
         /// or <paramref name="optionsAccessor"/> is <c>null</c>.
         /// </exception>
         public DomainEventDispatcher(
-            IMessageDispatcher messageDispatcher,
+            IMessagingEngine messagingEngine,
             IDateTimeProvider dateTimeProvider,
             IOptions<DomainStorageOptions> optionsAccessor,
             ILogger<DomainEventDispatcher>? logger = null)
         {
-            if (messageDispatcher is null)
-                throw new ArgumentNullException(nameof(messageDispatcher));
+            if (messagingEngine is null)
+                throw new ArgumentNullException(nameof(messagingEngine));
 
             if (dateTimeProvider is null)
                 throw new ArgumentNullException(nameof(dateTimeProvider));
@@ -70,10 +72,11 @@ namespace AI4E.Storage.Domain
             if (optionsAccessor is null)
                 throw new ArgumentNullException(nameof(optionsAccessor));
 
-            _messageDispatcher = messageDispatcher;
+            _messageDispatcher = messagingEngine.CreateDispatcher();
             _dateTimeProvider = dateTimeProvider;
             _optionsAccessor = optionsAccessor;
             _logger = logger ?? NullLogger<DomainEventDispatcher>.Instance;
+            _disposeHelper = new AsyncDisposeHelper(DisposeInternalAsync);
         }
 
         /// <inheritdoc/>
@@ -176,6 +179,11 @@ namespace AI4E.Storage.Domain
         public void Dispose()
         {
             _disposeHelper.Dispose();
+        }
+
+        private ValueTask DisposeInternalAsync()
+        {
+            return _messageDispatcher.DisposeAsync();
         }
     }
 }
